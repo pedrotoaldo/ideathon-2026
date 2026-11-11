@@ -105,6 +105,10 @@ const SAUDACAO = /^(oi+|ola|opa|eae|oie|hey|salve|e ai|bom dia|boa tarde|boa noi
 const CONTINUAR = ['continuar', 'continua', 'continuar a conta', 'quero continuar', 'seguir', 'pode continuar', 'vamos continuar', 'continuo', 'continuar conta', 'continuar a coleta'];
 const ehSaudacao = (t) => SAUDACAO.test(semAlongar(t));
 
+// Papo de cortesia ("tudo bem?", "você está bem?", "como vai?"), também como sai da transcrição de áudio
+const PAPO = /^(e )?(ola |oi |opa )?(tudo (bem|bom|certo|joia|tranquilo)|(voce )?(ta|esta|anda) (tudo )?(bem|bom|certo)|como (voce )?(vai|esta|ta|anda)|(voce )?(ta|esta) bem|beleza)( (com voce|ai|por ai|ai com voce|mesmo|ne|e voce))*$/;
+const ehPapo = (t) => PAPO.test(semAlongar(normalizarTexto(t)));
+
 const MULTIPLICADORES = { mil: 1e3, k: 1e3, milhao: 1e6, milhoes: 1e6 };
 
 function valorDoToken(numero, multiplicador) {
@@ -148,7 +152,7 @@ function rotear(texto, estado) {
   const t = normalizarTexto(texto);
   const emFluxo = ESTADOS_DE_FLUXO.includes(estado);
   if (emFluxo && ehSaudacao(t)) return { intencao: 'saudacao_fluxo' };
-  if (MENU.includes(t) || ehSaudacao(t)) return { intencao: 'menu' };
+  if (MENU.includes(t) || ehSaudacao(t) || (!emFluxo && ehPapo(t))) return { intencao: 'menu' };
   if (APAGAR.some((p) => t.includes(p))) return { intencao: 'apagar' };
   if (IDENTIDADE.some((re) => re.test(t))) return { intencao: 'identidade' };
   if (t === '3' || (t !== 'pessoa' ? tem(t, HUMANO.filter((h) => h !== 'pessoa')) : true)) return { intencao: 'humano' };
@@ -186,4 +190,4 @@ function pedeApagar(texto) {
   return APAGAR.some((p) => t.includes(p));
 }
 
-module.exports = { cidadeDoTexto, produtoDoTexto, ehConfirmacaoDados, ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };
+module.exports = { ehPapo, cidadeDoTexto, produtoDoTexto, ehConfirmacaoDados, ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

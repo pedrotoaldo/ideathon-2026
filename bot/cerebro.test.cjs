@@ -438,6 +438,17 @@ test('dúvida sobre o campo explica e repete a pergunta, sem LLM (bug "qual o ta
   assert.equal(extrair.chamadas.length, 0);
 });
 
+test('REGRESSÃO áudio: "Tudo bem?" no meio da conta responde com simpatia e repete a pergunta, sem LLM', async () => {
+  const extrair = llm();
+  for (const t of ['Tudo bem?', 'Você está bem?', 'Tá tudo bem?', 'Como você está?', 'Como vai?', 'Tudo bem com você?']) {
+    const p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } }, t, extrair);
+    assert.equal(p.texto, 'Tudo certo por aqui, obrigada por perguntar! Vamos continuar a conta.\nQual o tamanho da área? Pode ser em hectares ou alqueires.', t);
+    assert.equal(p.r.estado, 'coletando_safra', t);
+  }
+  assert.equal(extrair.chamadas.length, 0);
+  assert.match((await passo({ estado: 'menu', dados: {} }, 'Tudo bem?', extrair)).texto, /Como posso ajudar/);
+});
+
 test('REGRESSÃO celular: conversa fiada ("você está bem?") não vira explicação do campo', async () => {
   const base = () => ({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } });
   for (const t of ['você está bem?', 'tudo bem com você?', 'como vai você?', 'quem é você?']) {

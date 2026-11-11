@@ -4,7 +4,7 @@
 const S = require('../src/calc/safra.cjs');
 const T = require('./textos');
 const cotacoesDemo = require('./cotacoes-demo');
-const { rotear, cidadeDoTexto, ehConfirmacaoDados, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
+const { rotear, cidadeDoTexto, ehConfirmacaoDados, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros, ehPapo } = require('./roteador');
 const { temDadosDeSafra } = require('./extracao');
 
 const ORDEM = ['area_ha', 'custo_total', 'produtividade', 'preco'];
@@ -276,6 +276,12 @@ async function tratar(conversa, texto, deps) {
     // "usa esse": aceita a referência de preço oferecida na pergunta do preço
     if (campo === 'preco' && coleta.oferta_preco != null && (ehConfirmacao(t) || ACEITA_REFERENCIA.test(normalizarTexto(t)))) {
       aplicar(extDoCampo('preco', coleta.oferta_preco));
+      return;
+    }
+
+    // Papo de cortesia ("tudo bem?"): responde com simpatia e volta à pergunta, sem LLM
+    if (ehPapo(t)) {
+      perguntar(campo && CAMPOS_SAFRA.includes(campo) ? campo : (S.camposFaltantes(dados.safra || {})[0] || ORDEM[0]), T.PAPO_NO_FLUXO);
       return;
     }
 

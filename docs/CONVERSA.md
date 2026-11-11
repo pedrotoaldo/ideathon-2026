@@ -53,6 +53,9 @@ Com a oferta ativa, valem como escolha desse valor: "usa esse", "pode usar", "es
 - produtividade: "Sem problema, pode ser aproximado. Pense no que sua terra costuma dar nas últimas safras."
 - preco: "Sem problema, pode ser aproximado. Use o preço de hoje ou o que você espera vender."
 
+**PAPO_NO_FLUXO** (papo de cortesia no meio da conta: "tudo bem?", "você está bem?", "como vai?"; sem LLM, e volta à pergunta pendente. Fora de um fluxo, vai para o menu)
+> Tudo certo por aqui, obrigada por perguntar! Vamos continuar a conta.
+
 **CONTINUAR_OU_MENU** (saudação no meio de um fluxo: "oi", "opa, e aí?"; o estado não muda)
 > Oi! Quer continuar a conta ou ver o menu? Escreva "continuar" ou "menu".
 
