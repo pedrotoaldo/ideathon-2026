@@ -27,6 +27,8 @@ test('transcrever: multipart em português para /audio/transcriptions', async ()
   assert.equal(visto.op.headers.Authorization, 'Bearer chave-de-teste');
   assert.equal(visto.op.body.get('language'), 'pt');
   assert.equal(visto.op.body.get('model'), 'whisper-1');
+  assert.match(visto.op.body.get('prompt'), /sim, não, isso, pode/); // contexto para palavras curtas
+  assert.match(visto.op.body.get('prompt'), /hectares, alqueires, sacas por hectare/);
   assert.equal(visto.op.body.get('file').name, 'audio.ogg');
 });
 

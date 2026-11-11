@@ -3,7 +3,7 @@
 
 const S = require('../src/calc/safra.cjs');
 const T = require('./textos');
-const { rotear, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
+const { rotear, ehConfirmacaoDados, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
 const { temDadosDeSafra } = require('./extracao');
 
 const ORDEM = ['area_ha', 'custo_total', 'produtividade', 'preco'];
@@ -279,7 +279,7 @@ async function tratar(conversa, texto, deps) {
   async function confirmar(t, eSeNaConfirmacao) {
     if (eSeNaConfirmacao) { say(T.ESE_ANTES_CONFIRMAR, 'safra'); return; } // continua em confirmando_safra
     const alerta = dados.coleta && dados.coleta.alerta_faixa;
-    if (ehConfirmacao(t)) {
+    if (ehConfirmacaoDados(t)) {
       if (alerta && !ehConfirmacaoExplicita(t)) { say(S.montarConfirmacao(dados.safra, alerta), 'safra'); return; }
       calcular();
       return;
@@ -292,7 +292,7 @@ async function tratar(conversa, texto, deps) {
     if (numeroSolto(t) != null) { say(T.NUMERO_SOLTO, 'safra'); return; } // correção sem dizer qual campo
     const ext = await chamarLlm(t, null);
     const mudou = aplicar(ext, { jaConfirmando: true });
-    if (!mudou) { out.respostas = []; say(T.PERGUNTA_CORRECAO, 'safra'); }
+    if (!mudou) { out.respostas = []; say(T.CONFIRMA_NAO_ENTENDI, 'safra'); } // não entendeu nem como "sim" nem como correção
   }
 
   async function eSe(t) {

@@ -38,6 +38,7 @@ const T = {
   PERGUNTA_UNIDADE_AREA: 'Esses {valor} são hectares ou alqueires?',
   FORA_DA_FAIXA: 'Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?',
   PERGUNTA_CORRECAO: 'Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.',
+  CONFIRMA_NAO_ENTENDI: 'Não entendi. Os dados estão certos? Responda sim ou não.',
   NUMERO_SOLTO: 'Esse número é o quê? Pode dizer, por exemplo: "10 hectares", "custo de 45 mil", "60 sacas por hectare" ou "saca a 100".',
   CONFIRMA_HIPOTESE: 'Responda "sim" ou me diga os números certos.',
   NUMEROS_AMBIGUOS: 'Não consegui ligar esses números ao que cada um é.',

@@ -40,12 +40,16 @@ function extensao(mimetype) {
   return 'ogg'; // WhatsApp: audio/ogg; codecs=opus
 }
 
+// Contexto curto para o Whisper acertar palavras curtas ("sim" não vira "fim"). Pode ser trocado em AUDIO_PROMPT_TRANSCRICAO.
+const PROMPT_TRANSCRICAO = 'Conversa de WhatsApp com a IAra, assistente do produtor rural. Safra de soja, milho e trigo: hectares, alqueires, sacas por hectare, preço da saca, custo. Respostas comuns: sim, não, isso, pode, certo, certinho, ok, manda, vai.';
+
 // Áudio (Buffer) -> texto em português. Devolve '' se a transcrição vier vazia.
 async function transcrever(buffer, mimetype, { fetchFn } = {}) {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: String(mimetype || 'audio/ogg').split(';')[0] }), 'audio.' + extensao(mimetype));
   form.append('model', process.env.AUDIO_MODEL_TRANSCRICAO || 'whisper-1');
   form.append('language', 'pt');
+  form.append('prompt', process.env.AUDIO_PROMPT_TRANSCRICAO || PROMPT_TRANSCRICAO);
   form.append('response_format', 'json');
   const r = await postar(base() + '/audio/transcriptions', {
     method: 'POST',

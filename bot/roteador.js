@@ -41,7 +41,7 @@ const SAFRA = ['safra', 'fazer (a |minha )?conta', 'minha conta', 'conta da', 'c
 
 const CONFIRMA_FORTES = ['sim', 's', 'isso', 'certo', 'correto', 'ok', 'confirmo', 'exato', 'exatamente', 'positivo', 'claro', 'pode', 'certinho', 'perfeito', 'beleza', 'blz', 'combinado', 'fechado', 'aham', 'uhum', 'afirmativo', 'yes'];
 const CONFIRMA_FRACAS = ['mesmo', 'ser', 'esta', 'ta', 'ai', 'tudo', 'e', 'sim', 'faz', 'fazer', 'a', 'conta', 'calcula', 'calcular', 'vai', 'manda', 'segue', 'seguir', 'por', 'favor', 'obrigado', 'obrigada', 'ne', 'ta bom', 'bom'];
-const NEGA = ['nao', 'n', 'errado', 'negativo', 'nao esta certo', 'ta errado', 'esta errado'];
+const NEGA = ['nao', 'n', 'errado', 'negativo', 'nao esta certo', 'ta errado', 'esta errado', 'corrige', 'corrigir', 'quero corrigir', 'errada'];
 
 // Letras repetidas ("siiim", "simmm") voltam a uma só; vale para confirmações curtas, em texto ou transcrição de áudio
 const semAlongar = (t) => t.replace(/(\p{L})\1{2,}/gu, '$1');
@@ -59,8 +59,22 @@ function ehNegacao(texto) {
 
 // "sim, está certo": confirmação explícita (usada quando a IAra avisou que um valor está fora do comum)
 function ehConfirmacaoExplicita(texto) {
-  if (!ehConfirmacao(texto)) return false;
+  if (!ehConfirmacaoDados(texto)) return false;
   return semAlongar(normalizarTexto(texto)).split(/[^\p{L}\p{N}]+/u).some((p) => ['certo', 'certinho', 'correto', 'confirmo', 'exato', 'exatamente', 'mesmo'].includes(p));
+}
+
+// Confirmação dos dados da safra (texto ou transcrição de áudio): aceita também "dá certinho, dá certinho. Vai.",
+// "pode ir", "manda", "tá bom" e as transcrições prováveis de um "sim" curto ("fim", "sin", "si").
+// Só vale na confirmação; "não", "errado" e "corrige" recusam.
+const DADOS_FORTES = ['certinho', 'vai', 'manda', 'bom', 'fim', 'sin', 'si', 'correto', 'exato', 'confirmo'];
+const DADOS_FRACAS = ['da', 'ir', 'fazer', 'faz', 'pode', 'ta', 'e', 'ai', 'ne'];
+const DADOS_RECUSA = ['nao', 'n', 'errado', 'errada', 'erro', 'corrige', 'corrigir', 'negativo', 'quase', 'mudar', 'troca'];
+function ehConfirmacaoDados(texto) {
+  if (ehConfirmacao(texto)) return true;
+  const palavras = semAlongar(normalizarTexto(texto)).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (!palavras.length || palavras.length > 8 || palavras.some((p) => DADOS_RECUSA.includes(p))) return false;
+  const ok = (p) => DADOS_FORTES.includes(p) || DADOS_FRACAS.includes(p) || CONFIRMA_FORTES.includes(p) || CONFIRMA_FRACAS.includes(p);
+  return palavras.every(ok) && palavras.some((p) => DADOS_FORTES.includes(p) || CONFIRMA_FORTES.includes(p));
 }
 
 // Saudação curta ("oi", "opa, e aí?", "bom dia, tudo bem"): no meio de um fluxo a IAra pergunta se continua ou vai ao menu
@@ -145,4 +159,4 @@ function pedeApagar(texto) {
   return APAGAR.some((p) => t.includes(p));
 }
 
-module.exports = { ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };
+module.exports = { ehConfirmacaoDados, ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

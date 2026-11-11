@@ -391,3 +391,30 @@ test('REGRESSÃO 11/11 (4): variações de "sim" por texto ou transcrição de �
   }
   for (const t of ['Não.', 'Isso não', 'está errado', 'quarenta mil']) assert.equal(ehConfirmacao(t), false, t);
 });
+
+// ---------- Teste real de áudio, 2ª rodada: confirmação por transcrição ----------
+test('REGRESSÃO áudio: "Dá certinho, dá certinho. Vai." e "Fim." confirmam; "Não", "errado" e "corrige" recusam', async () => {
+  const conf = () => ({ estado: 'confirmando_safra', dados: { safra: { ...CONF }, coleta: {} } });
+  for (const t of ['Dá certinho, dá certinho. Vai.', 'Fim.', 'Sin.', 'Si.', 'Dá certo', 'Certinho', 'Vai', 'Pode ir', 'Pode fazer', 'Manda', 'Ok', 'Tá bom', 'Correto', 'Exato', 'Confirmo', 'Tá bom, pode fazer']) {
+    const p = await passo(conf(), t, llm());
+    assert.equal(p.r.estado, 'resultado_safra', t);
+  }
+  for (const t of ['Não', 'Errado', 'Corrige']) {
+    const p = await passo(conf(), t, llm());
+    assert.equal(p.r.estado, 'confirmando_safra', t);
+    assert.match(p.texto, /Qual número está errado\?/, t);
+  }
+});
+
+test('REGRESSÃO áudio: o que não é "sim" nem correção pergunta "Não entendi. Os dados estão certos?"', async () => {
+  const p = await passo({ estado: 'confirmando_safra', dados: { safra: { ...CONF }, coleta: {} } }, 'blá blá talvez depois', llm());
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.equal(p.texto, 'Não entendi. Os dados estão certos? Responda sim ou não.');
+  assert.doesNotMatch(p.texto, /Qual número está errado/);
+});
+
+test('REGRESSÃO áudio: com aviso de sanidade continua exigindo "sim, está certo" (mas "dá certinho" vale como certo)', async () => {
+  const base = () => ({ estado: 'confirmando_safra', dados: { safra: { ...CONF, preco: 20 }, coleta: { alerta_faixa: 'Atenção: saca a R$ 20 é bem abaixo do comum (menos de R$ 30). Está certo?' } } });
+  for (const t of ['Fim.', 'Vai', 'Isso.', 'Sim']) assert.equal((await passo(base(), t, llm())).r.estado, 'confirmando_safra', t);
+  for (const t of ['Dá certinho, vai', 'Sim, está certo', 'Correto']) assert.equal((await passo(base(), t, llm())).r.estado, 'resultado_safra', t);
+});

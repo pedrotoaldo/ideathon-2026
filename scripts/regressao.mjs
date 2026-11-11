@@ -304,6 +304,27 @@ const cenarios1111 = [
       return r;
     },
   },
+  {
+    nome: 'Áudio (2ª rodada): "Dá certinho, dá certinho. Vai." e "Fim." confirmam; sem entender, pergunta sim ou não',
+    numero: '5500900000018',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = envioRodar(numero, r);
+      const conta = '10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100';
+      await passo('oi', [/Oi!/]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo(conta, [/Entendi: 10 ha de soja/, /Está certo\?/]);
+      await passo('blá blá talvez depois', [/Não entendi\. Os dados estão certos\? Responda sim ou não\./], [/Qual número está errado/]);
+      await passo('Fim.', [/Entendi: "Fim\."/, /custo por saca é R\$ 75\./], [], { audio: true });
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo(conta, [/Está certo\?/]);
+      await passo('Dá certinho, dá certinho. Vai.', [/custo por saca é R\$ 75\./], [/Qual número está errado/], { audio: true });
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo(conta, [/Está certo\?/]);
+      await passo('Não', [/Qual número está errado\?/]);
+      return r;
+    },
+  },
 ];
 
 let falhas = 0;

@@ -43,7 +43,12 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **FORA_DA_FAIXA** (valor fora do plausível; vem seguido da pergunta do campo)
 > Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?
 
-**PERGUNTA_CORRECAO** (resposta "não" na confirmação, ou correção que não foi entendida)
+**CONFIRMA_NAO_ENTENDI** (na confirmação, a mensagem não foi entendida nem como "sim" nem como correção)
+> Não entendi. Os dados estão certos? Responda sim ou não.
+
+Na confirmação (sem aviso de sanidade), valem como "sim", por texto ou áudio: sim, isso, certo, certinho, "dá certo", "dá certinho, dá certinho. Vai.", vai, "pode ir", "pode fazer", manda, ok, "tá bom", correto, exato, confirmo e as transcrições prováveis de um "sim" curto ("fim", "sin", "si"). "Não", errado e corrige recusam. Com aviso, continua valendo só "sim, está certo".
+
+**PERGUNTA_CORRECAO** (resposta "não" na confirmação)
 > Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.
 
 **ESE_ANTES_CONFIRMAR** (o produtor pergunta "e se..." enquanto a IAra espera o "sim"; continua em confirmando_safra)
