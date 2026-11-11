@@ -62,7 +62,7 @@ async function transcrever(buffer, mimetype, { fetchFn } = {}) {
 
 // Como a IAra deve soar (parâmetro instructions do /audio/speech); pode ser trocado em TTS_INSTRUCOES.
 // É só estilo de voz: a IAra continua se apresentando como assistente virtual e não dá diagnóstico (isso vai ao agrônomo).
-const INSTRUCOES_VOZ = 'Voz feminina, cerca de 20 e poucos anos, sotaque neutro do português do Brasil. Timbre suave e aveludado, textura de voz macia, tom médio, volume moderado. Ritmo levemente acelerado, mas claro e fácil de entender, com pausas naturais. Fala como uma jovem agrônoma conversando com um produtor rural que ela conhece: próxima, segura, simpática, sem tom de locutora nem de robô.';
+const INSTRUCOES_VOZ = 'Voz feminina jovem, por volta de 20 anos, sotaque neutro do português do Brasil. Timbre leve e claro, tom médio para levemente agudo, energia leve e animada, sorriso na voz. Ritmo levemente acelerado, mas claro, com pausas naturais. Fala como uma jovem recém-formada que conversa com um produtor rural conhecido: próxima, simpática e confiante. Nada de tom maduro, de locutora ou de robô.';
 
 // Texto -> áudio em base64 (mp3 por padrão; a Evolution converte em nota de voz)
 async function sintetizar(texto, { fetchFn } = {}) {
