@@ -23,10 +23,10 @@ Real × simulado na demo:
 | Painel da safra | Slide ou o vídeo de demonstração (Plus 3 e 4) |
 
 ## Etapa 0 — Infra e cálculo
-- [ ] Copiar `.env.example` para `.env` e preencher (feito: `.env` criado com segredos gerados e localhost; falta `LLM_*`, `N8N_WEBHOOK_URL` real e `DEMO_NUMERO_WHATSAPP`)
-- [ ] `docker compose up -d` (Evolution API, Postgres, Redis)
-- [ ] `psql "$DATABASE_URL" -f db/schema.sql` (só o Núcleo; `schema_plus.sql` fica para depois)
-- [ ] Criar instância na Evolution (`integration: WHATSAPP-BAILEYS`), ler o QR com o **chip dedicado da demo** e apontar o webhook (`MESSAGES_UPSERT`) para o n8n
+- [x] Copiar `.env.example` para `.env` e preencher (`AUDIO_API_KEY` fica para a Etapa 5)
+- [x] `docker compose up -d` (Evolution API, Postgres, Redis)
+- [x] `psql "$DATABASE_URL" -f db/schema.sql` (só o Núcleo; `schema_plus.sql` fica para depois) (aplicado pelo container: `docker exec -i agrozap_postgres psql -U agrozap -d agrozap < db/schema.sql`)
+- [x] Criar instância na Evolution (`integration: WHATSAPP-BAILEYS`), ler o QR com o **chip dedicado da demo** e apontar o webhook (`MESSAGES_UPSERT`) para o n8n (conectada em 11/11/2026 por código de pareamento; webhook em `host.docker.internal`)
 - [ ] `npm test` verde e `npm run build:n8n` (feitos, 14/14); colar `n8n/code-nodes/calcular_safra.js` num Code node "Calcular safra"
 
 ## Etapa 1 — Fluxo base no n8n
