@@ -127,3 +127,28 @@ test('normalizar: áudio traz duração, mimetype e base64 do webhook', () => {
   assert.equal(m.base64, 'QUJD');
   assert.equal(m.mimetype, 'audio/ogg; codecs=opus');
 });
+
+test('planejarFala: áudio recebido → só áudio quando não há números; com números, o texto continua indo por escrito', () => {
+  const { planejarFala } = require('./audio');
+  // sem números e falável: só áudio, com todas as respostas faladas em sequência
+  let p = planejarFala([{ texto: 'CBS é a contribuição federal.', intencao: 'tributario' }, { texto: 'Isso é orientação geral.', intencao: 'tributario' }]);
+  assert.equal(p.soAudio, true);
+  assert.equal(p.fala, 'CBS é a contribuição federal. Isso é orientação geral.');
+  // fora de escopo também é falado
+  assert.equal(planejarFala([{ texto: 'Eu só ajudo com a conta da safra.', intencao: 'fora_escopo' }]).soAudio, true);
+  // a opção solta "3" não é número de verdade
+  assert.equal(planejarFala([{ texto: 'Quer que eu chame um agrônomo? Escreva "3".', intencao: 'agro_geral' }]).soAudio, true);
+  // conta da safra: resumo falado + texto com os números (regra 9)
+  p = planejarFala([{ texto: 'Pela sua conta: R$ 75', intencao: 'safra', falado: 'Fiz a sua conta.' }, { texto: 'Cenários', intencao: 'safra' }]);
+  assert.deepEqual(p, { fala: 'Fiz a sua conta.', soAudio: false });
+  // qualquer valor, percentual ou quantidade na resposta mantém o texto
+  for (const t of ['Dólar agora: compra R$ 5,56.', 'Soja: 138 por saca.', 'Variação de 0,41%.', 'São 20 hectares.']) {
+    assert.equal(planejarFala([{ texto: t, intencao: 'dolar' }]).soAudio, false, t);
+  }
+  // menu e textos operacionais nunca viram só áudio
+  assert.equal(planejarFala([{ texto: 'Como posso ajudar?', intencao: 'menu' }]).soAudio, false);
+  assert.equal(planejarFala([{ texto: 'Tive um probleminha.', intencao: 'erro' }]).fala, null);
+  // longo demais vai por escrito (com a fala curta, se houver)
+  assert.equal(planejarFala([{ texto: 'a'.repeat(1000), intencao: 'tributario' }]).soAudio, false);
+  assert.deepEqual(planejarFala([]), { fala: null, soAudio: false });
+});

@@ -116,4 +116,25 @@ function escolherFala(respostas) {
   return paraFala(r.texto);
 }
 
-module.exports = { INSTRUCOES_VOZ, audioAtivo, transcrever, sintetizar, paraFala, escolherFala, extensao, LIMITE_FALA };
+// Mensagem do produtor foi áudio → a IAra responde só em áudio. Exceções, sempre por escrito (regra 9):
+// qualquer resposta com números (valores, percentuais, quantidades) e os textos operacionais (menu, boas-vindas, erros).
+// Nesses casos vale o comportamento antigo: o resumo falado (ou a primeira resposta curta) mais o texto completo.
+const TEXTO_OBRIGATORIO = ['menu', 'boas_vindas', 'apagar', 'audio', 'so_texto', 'texto_longo', 'limite', 'manutencao', 'erro', 'erro_llm', 'audio_ainda_nao', 'audio_nao_entendi', 'audio_longo'];
+const LIMITE_FALA_SO_AUDIO = 900; // caracteres somados; acima disso vai por escrito
+// Número de verdade (valor, quantidade, %); uma opção solta como "3" ou "1" não conta
+const TEM_NUMERO = /R\$|\d{2,}|\d[.,]\d|\d\s?(%|ha\b|kg|mm|°|sacas?|reais)/i;
+
+// { fala, soAudio }: fala = texto a sintetizar (null = só texto); soAudio = true dispensa o texto escrito
+function planejarFala(respostas) {
+  const lista = respostas || [];
+  const comResumo = lista.find((r) => r.falado);
+  if (comResumo) return { fala: comResumo.falado, soAudio: false }; // conta: os números exatos vão por escrito
+  const tudoFalavel = lista.length > 0 && lista.every((r) => !TEXTO_OBRIGATORIO.includes(r.intencao) && !TEM_NUMERO.test(String(r.texto)));
+  if (tudoFalavel) {
+    const fala = lista.map((r) => paraFala(r.texto)).join(' ');
+    if (fala.length <= LIMITE_FALA_SO_AUDIO) return { fala, soAudio: true };
+  }
+  return { fala: escolherFala(lista), soAudio: false };
+}
+
+module.exports = { INSTRUCOES_VOZ, audioAtivo, transcrever, sintetizar, paraFala, escolherFala, planejarFala, extensao, LIMITE_FALA };

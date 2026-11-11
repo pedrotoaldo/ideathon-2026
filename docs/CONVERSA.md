@@ -339,11 +339,12 @@ Dentro de um fluxo ativo (`coletando_safra`, `confirmando_safra`, `perfil_tribut
 ## 2.1 Áudio (Etapa 5 do PLAN; OpenAI)
 - Com `AUDIO_ATIVO=false` (ou sem `AUDIO_API_KEY`), qualquer áudio recebido responde `AUDIO_AINDA_NAO`, os comandos de áudio também, e `BOAS_VINDAS`/`MENU` não oferecem áudio.
 - Com `AUDIO_ATIVO=true`: o áudio do produtor (até 60 s) é transcrito (`AUDIO_MODEL_TRANSCRICAO`, português) e tratado como texto, inclusive no agrupamento de mensagens. A transcrição **não** é mostrada ao produtor (sem a mensagem `Entendi: "<transcrição>"`): a resposta já mostra o que a IAra entendeu, e a confirmação dos dados continua começando com "Entendi: 10 ha de soja...". A transcrição fica gravada em `mensagem.texto`. Transcrição vazia ou com erro: `AUDIO_NAO_ENTENDI`.
-- A IAra responde em áudio quando a mensagem recebida foi áudio (isso liga `conversa.responde_audio`), ou depois de "manda em áudio"; "só texto" desliga. Os comandos valem em qualquer estado.
-- Falha no TTS ou no envio do áudio: só texto, sem erro para o produtor.
+- **Texto → resposta em texto; áudio → resposta só em áudio.** Receber um áudio não deixa o áudio ligado para as mensagens seguintes. Só o comando "manda em áudio" (liga `conversa.responde_audio`) ou "só texto" (desliga) muda isso. Os comandos valem em qualquer estado.
+- **Exceções, sempre por escrito (regra 9):** qualquer resposta com número de verdade (valor em reais, quantidade, percentual; uma opção solta como "3" não conta), a conta da safra e os textos operacionais (menu, boas-vindas, erros, confirmação dos comandos de áudio). Nesses casos o áudio vai com o resumo (ou a primeira resposta curta) e o texto completo logo depois.
+- Falha no TTS ou no envio do áudio: a resposta vai por texto, sem erro para o produtor.
 - A voz é conversada: o `/audio/speech` sempre leva `instructions` (formato Voice/Tone/Pacing/Emotion/Pronunciation, em inglês: jovem brasileira de uns 25 anos, recém-formada, sotaque neutro, voz leve e clara, nunca madura nem de locutora ou call center; calorosa, sorrindo, ritmo natural um pouco animado, calma ao dar más notícias; só estilo de voz: a IAra segue se apresentando como assistente virtual e não dá diagnóstico técnico, que vai ao agrônomo; troque em `TTS_INSTRUCOES`). O resumo falado da conta (`montarResumoFalado`) começa com "Olha,", usa frases curtas e valores aproximados por extenso ("uns cinquenta e três reais"), sem símbolos nem listas; os números exatos vão no texto escrito logo depois. Amostras de voz: `node scripts/gerar-vozes.mjs` (em `docs/demo/vozes/`).
-- O áudio é curto (até ~25 s): para a conta da safra, usa `montarResumoFalado`; para os demais textos, o próprio texto quando tiver até ~400 caracteres, senão só o texto.
-- Ordem: áudio primeiro, texto logo depois (os números sempre por escrito).
+- O áudio é curto: para a conta da safra, usa `montarResumoFalado`; nas respostas só em áudio, todas as respostas do turno são faladas em sequência (até ~900 caracteres no total; acima disso vai por escrito).
+- Ordem quando há texto junto: áudio primeiro, texto logo depois (os números sempre por escrito).
 - Textos fixos curtos (LIMITE, MANUTENCAO, FORA_ESCOPO) não precisam de áudio.
 
 ## 2.2 Comportamento (espera, mensagens longas e erro)

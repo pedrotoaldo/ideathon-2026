@@ -6,7 +6,7 @@
 const T = require('./textos');
 const db = require('./db');
 const { enviarTexto, enviarPresenca, baixarMidia, enviarAudio, ehSimulado } = require('./evolution');
-const { audioAtivo, transcrever, sintetizar, escolherFala } = require('./audio');
+const { audioAtivo, transcrever, sintetizar, planejarFala } = require('./audio');
 const { normalizar, mascarar } = require('./normalizar');
 const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
@@ -249,17 +249,19 @@ async function responderGrupo(numero, itens) {
       }
       espera.cancelar(); // a resposta chegou: sem aviso de espera daqui em diante
       if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
-      // Preferência de áudio: comando explícito, ou áudio recebido liga
-      let querAudio = !!conversa.responde_audio;
+      // Texto → resposta em texto; áudio → resposta só em áudio. Só o comando "manda em áudio" / "só texto" muda isso
+      // (receber um áudio não deixa o áudio ligado para as próximas mensagens). Números e textos operacionais vão sempre por escrito.
+      let querAudio = temAudio || !!conversa.responde_audio;
       if (r.responde_audio !== undefined) querAudio = r.responde_audio;
-      else if (temAudio) querAudio = true;
+      let soAudio = false;
       if (audioAtivo()) {
-        if (querAudio !== !!conversa.responde_audio) await db.setRespondeAudio(m.numero, querAudio);
-        const fala = querAudio ? escolherFala(r.respostas) : null;
-        if (fala) await falar(m, fala, t0); // áudio primeiro, texto com os números logo depois
+        if (r.responde_audio !== undefined && r.responde_audio !== !!conversa.responde_audio) await db.setRespondeAudio(m.numero, r.responde_audio);
+        const plano = querAudio ? planejarFala(r.respostas) : { fala: null, soAudio: false };
+        if (plano.fala) soAudio = (await falar(m, plano.fala, t0)) && plano.soAudio; // falhou a voz: segue com o texto
       }
       for (const x of r.respostas) {
         intencao = x.intencao;
+        if (soAudio) continue;
         // Resposta longa (acima de ~600 caracteres) vai em até 3 mensagens, por parágrafo
         for (const parte of dividirResposta(x.texto)) {
           await responder(parte, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });
