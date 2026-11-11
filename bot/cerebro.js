@@ -3,7 +3,8 @@
 
 const S = require('../src/calc/safra.cjs');
 const T = require('./textos');
-const { rotear, ehConfirmacaoDados, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
+const cotacoesDemo = require('./cotacoes-demo');
+const { rotear, cidadeDoTexto, ehConfirmacaoDados, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
 const { temDadosDeSafra } = require('./extracao');
 
 const ORDEM = ['area_ha', 'custo_total', 'produtividade', 'preco'];
@@ -448,6 +449,42 @@ async function tratar(conversa, texto, deps) {
     out.estado = 'menu';
   }
 
+  // ----- Preços e clima (PRECOS_ATIVO, CLIMA_ATIVO): só informação, sem previsão e sem recomendação -----
+  async function responderDolar() {
+    if (!deps.precosAtivo) { say(T.EM_BREVE, 'dolar'); return; }
+    try {
+      say(await deps.dolar(), 'dolar');
+    } catch (e) {
+      console.error('[consulta] dólar: ' + e.message);
+      say(T.CONSULTA_FALHOU, 'dolar');
+    }
+  }
+
+  async function responderClima(cidade) {
+    if (!deps.climaAtivo) { say(T.EM_BREVE, 'clima'); return; }
+    if (!cidade) { out.estado = 'clima_cidade'; say(T.PEDE_CIDADE, 'clima'); return; }
+    try {
+      const x = await deps.clima(cidade);
+      if (x.tipo === 'ok') {
+        if (out.estado === 'clima_cidade') out.estado = 'menu';
+        say(x.texto, 'clima');
+      } else {
+        out.estado = 'clima_cidade'; // não achou: pede de novo
+        say(T.CIDADE_NAO_ENCONTRADA, 'clima');
+      }
+    } catch (e) {
+      console.error('[consulta] clima: ' + e.message);
+      if (out.estado === 'clima_cidade') out.estado = 'menu';
+      say(T.CONSULTA_FALHOU, 'clima');
+    }
+  }
+
+  // Esperando o nome da cidade: se a mensagem é outra coisa que o roteador reconhece, segue como no menu
+  if (conversa.estado === 'clima_cidade' && rotear(texto, 'menu').intencao !== 'ambiguo') {
+    conversa = { ...conversa, estado: 'menu' };
+    out.estado = 'menu';
+  }
+
   // Depois do alerta: só "sim" ou "não" respondem a ele; qualquer outra coisa sai do estado e segue como no menu
   if (conversa.estado === 'aguardando_resposta_alerta') {
     if (ehConfirmacao(texto) || ehNegacao(texto)) { respostaAlerta(ehConfirmacao(texto)); return out; }
@@ -511,11 +548,21 @@ async function tratar(conversa, texto, deps) {
     }
   } else if (r.intencao === 'gatilho') {
     await criarAlerta(normalizarTexto(texto) === '4' ? '' : texto); // o "4" do menu não é preço
-  } else if (['alertas', 'clima', 'painel'].includes(r.intencao)) {
+  } else if (r.intencao === 'dolar') {
+    await responderDolar();
+  } else if (r.intencao === 'clima') {
+    await responderClima(cidadeDoTexto(texto));
+  } else if (r.intencao === 'cotacao_demo') {
+    if (deps.precosAtivo) say(cotacoesDemo.responder(r.produto), 'cotacao_demo');
+    else say(T.EM_BREVE, 'cotacao_demo');
+  } else if (r.intencao === 'precos_clima') {
+    say(deps.precosAtivo || deps.climaAtivo ? T.PRECOS_CLIMA_MENU : T.EM_BREVE, 'precos_clima');
+  } else if (['alertas', 'painel'].includes(r.intencao)) {
     say(T.EM_BREVE, r.intencao); // lista de alertas, clima e painel: Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);
     else if (conversa.estado === 'criando_alerta') await criarAlerta(texto);
+    else if (conversa.estado === 'clima_cidade') await responderClima(cidadeDoTexto(texto) || String(texto).trim().replace(/[?!.,]+$/, ''));
     else if (conversa.estado === 'perfil_tributario') await perfil(texto);
     else await confirmar(texto, r.eSe);
   } else if (r.intencao === 'safra') {

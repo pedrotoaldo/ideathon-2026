@@ -83,6 +83,8 @@ function paraFala(texto) {
   return String(texto || '')
     .replace(/[••]/g, ' ')
     .replace(/R\$\s*(\d+(?:[.,]\d+)*)/g, '$1 reais')
+    .replace(/°/g, ' graus')
+    .replace(/(\d)\s*mm\b/g, '$1 milímetros')
     .replace(/sc\/ha/gi, 'sacas por hectare')
     .replace(/sacas\/ha/gi, 'sacas por hectare')
     .replace(/(\d)\s*ha\b/g, '$1 hectares')

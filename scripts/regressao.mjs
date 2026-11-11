@@ -325,6 +325,35 @@ const cenarios1111 = [
       return r;
     },
   },
+  ...(String(process.env.PRECOS_ATIVO).toLowerCase() === 'true' && String(process.env.CLIMA_ATIVO).toLowerCase() === 'true' ? [{
+    nome: 'Preços e clima (PRECOS_ATIVO e CLIMA_ATIVO; consultas reais): dólar, clima, cotações ilustrativas, sem previsão',
+    numero: '5500900000019',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = envioRodar(numero, r);
+      await passo('oi', [/5\. Preços e clima/]);
+      await passo('5', [/Posso mostrar/, /"dólar"/, /"preço da soja"/, /tempo em Mandaguari/, /ilustrativos da demonstração/]);
+      await passo('dólar', [/Dólar agora: compra R\$ [\d.,]+ e venda R\$ [\d.,]+\./, /Variação do dia: [+-]?[\d,]+%\./, /Cotação de \d\d\/\d\d às \d\d:\d\d\./, /Fonte: AwesomeAPI\.$/]);
+      await passo('o dólar vai subir?', [/não faço previsão de preço/], [/AwesomeAPI/]);
+      await passo('preço da soja', [/Soja: R\$ 138 por saca \(região de Mandaguari, \d\d\/\d\d\/\d{4}\)\./, /Valor ilustrativo da demonstração, não é cotação real\. No produto, a cotação vem oficial da cooperativa\.$/]);
+      await passo('quanto está o boi gordo?', [/Boi gordo: R\$ 345 por arroba/, /Valor ilustrativo/]);
+      await passo('como está o tempo em Mandaguari?', [/Tempo em Mandaguari, Paraná, próximos 5 dias:/, /\d+° a \d+°/, /Fonte: Open-Meteo\. É informação do tempo, não previsão de colheita\.$/]);
+      await passo('vai chover?', [/De qual cidade\?/]);
+      await passo('Londrina', [/Tempo em Londrina/, /Fonte: Open-Meteo/]);
+      await passo('previsão de preço da soja', [/não faço previsão de preço/], [/R\$ 138/]);
+      const a = (await pool.query("SELECT count(*) FROM conversa WHERE numero = $1 AND dados ? 'alerta'", [numero])).rows[0].count;
+      r.push({ ok: Number(a) === 0, rotulo: 'as cotações ilustrativas não criam nem disparam alerta', detalhe: `${a} conversa(s) com alerta` });
+      return r;
+    },
+  }] : [{
+    nome: 'Preços e clima desligados (PRECOS_ATIVO/CLIMA_ATIVO): EM_BREVE e o menu sem a opção 5',
+    numero: '5500900000019',
+    passos: [
+      ['oi', [/Como posso ajudar/], [/5\. Preços e clima/]],
+      ['dólar', [/ainda não está pronta/]],
+      ['como está o tempo em Mandaguari?', [/ainda não está pronta/]],
+    ],
+  }]),
 ];
 
 let falhas = 0;

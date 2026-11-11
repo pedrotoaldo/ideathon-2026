@@ -12,6 +12,7 @@ const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
 const { extrair } = require('./extracao');
 const { responder: responderTributario } = require('./tributario');
+const consultas = require('./consultas');
 const { criarDebounce } = require('./debounce');
 const { enfileirar } = require('./fila');
 const { registrar } = require('./limite');
@@ -216,7 +217,8 @@ async function responderGrupo(numero, itens) {
     } else {
       const faixasCultura = await db.config('faixas_cultura', undefined);
       const limitesSanidade = await db.config('limites_sanidade', undefined);
-      const r = await tratar(conversa, texto, { extrair, faixasCultura, limitesSanidade, tributario: responderTributario, audioAtivo: audioAtivo() });
+      const r = await tratar(conversa, texto, { extrair, faixasCultura, limitesSanidade, tributario: responderTributario, audioAtivo: audioAtivo(),
+        precosAtivo: consultas.precosAtivo(), climaAtivo: consultas.climaAtivo(), dolar: consultas.dolar, clima: consultas.clima });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
         intencao = 'apagar';

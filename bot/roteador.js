@@ -1,6 +1,6 @@
 // Roteador por regra (docs/CONVERSA.md seção 2). O LLM só entra quando nenhuma regra resolve ("ambiguo").
 
-const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario', 'criando_alerta'];
+const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario', 'criando_alerta', 'clima_cidade'];
 
 function normalizarTexto(texto) {
   return String(texto || '')
@@ -34,7 +34,30 @@ const INJECAO = [
 ];
 const IDENTIDADE = [/\b(voce|vc|tu) (e|eh|era) (uma? )?(pessoa|gente|humano|humana|robo|bot|ia|maquina|real)\b/, /\b(e|eh) (uma? )?(pessoa|humano|humana|robo|bot) (de verdade|mesmo|real)\b/];
 const PREVISAO = ['previsao de preco', 'previsao da safra', 'previsao de colheita', 'previsao da colheita', 'previsao', 'vai subir', 'vai cair', 'vai valer', 'quanto vai custar a saca', 'preco no mes que vem', 'preco mes que vem'];
-const CLIMA = ['clima', 'tempo', 'chuva', 'previsao do tempo', 'temperatura'];
+const CLIMA = ['clima', 'chuva', 'chuvas', 'chover', 'chove', 'chovendo', 'temperatura', 'previsao do tempo', 'como esta o tempo', 'como ta o tempo', 'tempo em', 'tempo hoje', 'tempo amanha', 'o tempo'];
+const DOLAR = ['dolar', 'cotacao do dolar', 'usd'];
+const PRECO_PALAVRAS = ['preco', 'precos', 'cotacao', 'cotacoes', 'valor', 'quanto esta', 'quanto ta', 'quanto custa', 'quanto vale', 'quanto paga', 'quanto pagam', 'a quanto esta'];
+// produto -> chave de bot/cotacoes-demo.js
+const PRODUTOS_DEMO = [['soja', 'soja'], ['milho', 'milho'], ['trigo', 'trigo'], ['boi gordo', 'boi'], ['boi', 'boi'], ['arroba', 'boi']];
+const PRECOS_GERAL = ['precos', 'cotacoes', 'precos e clima', 'cotacao'];
+
+// Produto de uma pergunta de preço ("preço da soja", "quanto está o milho"); sem número e sem "e se"
+function produtoDoTexto(t) {
+  if (/\d/.test(t) || tem(t, ['e se'])) return null;
+  if (!tem(t, PRECO_PALAVRAS)) return null;
+  const achado = PRODUTOS_DEMO.find(([p]) => tem(t, [p]));
+  return achado ? achado[1] : null;
+}
+
+// Cidade de "como está o tempo em Mandaguari?", "vai chover em Maringá amanhã", "clima de Londrina"; null se não vier
+function cidadeDoTexto(texto) {
+  const t = normalizarTexto(texto).replace(/[,.]/g, ' ').replace(/\s+/g, ' ');
+  const m = t.match(/(?:clima|tempo|chuvas?|chover|chove|chovendo|temperatura)(?: [a-z]+){0,3}? (?:em|de|para|pra|na|no|da|do) ([a-z ]{2,40})$/);
+  if (!m) return null;
+  const limpo = m[1].replace(/ (hoje|amanha|agora|essa semana|esta semana|nos proximos dias)$/, '').replace(/^(cidade|municipio) (de |do |da )?/, '').trim();
+  if (!limpo || ['hoje', 'amanha', 'agora', 'semana', 'tempo', 'clima'].includes(limpo) || limpo.split(' ').length > 6) return null;
+  return limpo;
+}
 const PAINEL = ['painel', 'grafico', 'ver minha safra'];
 const AUDIO = ['manda em audio', 'manda audio', 'responde em audio', 'responder em audio', 'quero audio', 'so texto', 'so por texto', 'sem audio', 'para de mandar audio'];
 const SAFRA = ['safra', 'fazer (a |minha )?conta', 'minha conta', 'conta da', 'custo', 'saca', 'sacas', 'colher', 'colheita', 'hectare', 'hectares', 'alqueire', 'alqueires', 'prejuizo', 'lucro', 'e se'];
@@ -120,7 +143,7 @@ function numeroSolto(texto) {
 }
 
 // Retorna { intencao, eSe }
-// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | alertas | clima | painel | audio | resumo | safra | fluxo | ambiguo
+// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | alertas | clima | dolar | cotacao_demo | precos_clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
   const t = normalizarTexto(texto);
   const emFluxo = ESTADOS_DE_FLUXO.includes(estado);
@@ -146,6 +169,10 @@ function rotear(texto, estado) {
   if (tem(t, AGRO_TECNICO)) return { intencao: 'agronomo' };
   if (tem(t, CLIMA)) return { intencao: 'clima' };
   if (tem(t, PREVISAO)) return { intencao: 'previsao' };
+  if (tem(t, DOLAR)) return { intencao: 'dolar' };
+  const produto = produtoDoTexto(t);
+  if (produto) return { intencao: 'cotacao_demo', produto };
+  if (t === '5' || tem(t, PRECOS_GERAL)) return { intencao: 'precos_clima' };
   if (tem(t, PAINEL)) return { intencao: 'painel' };
   if (tem(t, AUDIO)) return { intencao: 'audio' };
   if (t === 'resumo') return { intencao: 'resumo' };
@@ -159,4 +186,4 @@ function pedeApagar(texto) {
   return APAGAR.some((p) => t.includes(p));
 }
 
-module.exports = { ehConfirmacaoDados, ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };
+module.exports = { cidadeDoTexto, produtoDoTexto, ehConfirmacaoDados, ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

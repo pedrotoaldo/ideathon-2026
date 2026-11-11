@@ -60,5 +60,7 @@ servidor.listen(PORTA, '0.0.0.0', () => {
   console.log(`Agrupamento de mensagens: janela de ${DEBOUNCE_MS} ms, máximo de ${DEBOUNCE_MAX_MS} ms (DEBOUNCE_MS e DEBOUNCE_MAX_MS no .env)`);
   const { audioAtivo } = require('./audio');
   console.log(audioAtivo() ? `Áudio: ATIVO (transcrição ${process.env.AUDIO_MODEL_TRANSCRICAO || 'whisper-1'}, voz ${process.env.AUDIO_MODEL_TTS || 'gpt-4o-mini-tts'}/${process.env.TTS_VOZ || 'nova'}; chave carregada)` : 'Áudio: DESLIGADO (AUDIO_ATIVO=false ou AUDIO_API_KEY vazia)');
+  const { precosAtivo, climaAtivo } = require('./consultas');
+  console.log(`Preços (dólar e cotações da demonstração): ${precosAtivo() ? 'ATIVO' : 'DESLIGADO'} | Clima: ${climaAtivo() ? 'ATIVO' : 'DESLIGADO'} (PRECOS_ATIVO, CLIMA_ATIVO)`);
   console.log(`Bot no ar em http://0.0.0.0:${PORTA}  (health: /health)  webhook: ${CAMINHO}`);
 });

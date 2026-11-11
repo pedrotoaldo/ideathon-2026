@@ -1,7 +1,7 @@
 // Expiração da conversa: depois de N minutos sem mensagem, o fluxo em andamento é descartado e a próxima mensagem
 // começa do menu. A última conta calculada é mantida (para "e se" e "resumo").
 
-const EM_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario', 'criando_alerta'];
+const EM_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario', 'criando_alerta', 'clima_cidade'];
 // aguardando_resposta_alerta não expira: o produtor pode responder ao alerta horas depois
 const NAO_EXPIRA = ['novo', 'aguardando_resposta_alerta'];
 

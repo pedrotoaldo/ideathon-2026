@@ -67,6 +67,7 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Extras: limite por número em memória (`bot/limite.js`, não zera com "apagar meus dados"); `DEBOUNCE_MS=2500`; QR gerado por `node scripts/gerar-qr.mjs` em `docs/demo/qr-iara.png`; `qa-conversa` rodado nos Roteiros A a D
 
 ## Extra depois da Etapa 3 (pedido do usuário)
+- [x] Preços e clima (pedido de 11/11, atrás de `PRECOS_ATIVO` e `CLIMA_ATIVO`): dólar real (AwesomeAPI), clima de 5 dias por cidade (Open-Meteo), cotações ilustrativas de soja, milho, trigo e boi gordo (`bot/cotacoes-demo.js`), opção 5 do menu, fallback "Não consegui consultar agora" (timeout de 5 s); sem previsão de preço e sem ligação com o alerta
 - [x] Comando "resumo" (`montarResumo` em `safra.cjs`, com teste): mostra safra e/ou perfil e diz como completar o que falta
 - [x] `calcularCobertura` em `safra.cjs`, com testes, **sem ligação com o bot** (Plus 9)
 - [x] Plus 9, 10 e 11 descritas em `docs/FASES_PLUS.md`; Plus 7 ganhou a integração com app e CRM

@@ -20,8 +20,10 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > 2. Entender a reforma tributária
 > 3. Falar com uma pessoa
 > 4. Criar um alerta de preço da saca
+> 5. Preços e clima
 > Pode responder com o número ou escrever.
 > Variante com o áudio ligado: a última linha vira "Pode responder com o número ou mandar um áudio."
+> Variante com `PRECOS_ATIVO` e `CLIMA_ATIVO` desligados: sem a linha "5. Preços e clima".
 
 **PEDE_SAFRA**
 > Vamos fazer a conta. Me conte, do seu jeito: quantos hectares ou alqueires, quanto vai gastar no total, quantas sacas por hectare espera colher e o preço da saca.
@@ -181,6 +183,39 @@ Na confirmação (sem aviso de sanidade), valem como "sim", por texto ou áudio:
 **ERRO_TEMPORARIO**
 > Tive um probleminha agora. Tenta de novo, ou responda com 1, 2 ou 3.
 
+**PRECOS_CLIMA_MENU** (opção 5; só entram as linhas das chaves ligadas)
+> Posso mostrar:
+> • Dólar de agora: escreva "dólar"
+> • Soja, milho, trigo ou boi gordo: escreva, por exemplo, "preço da soja"
+> • Tempo dos próximos 5 dias: escreva, por exemplo, "como está o tempo em Mandaguari"
+> Os valores de soja, milho, trigo e boi gordo são ilustrativos da demonstração.
+
+**DOLAR** (real, AwesomeAPI, sem chave; `bot/consultas.js`)
+> Dólar agora: compra R$ 5,5600 e venda R$ 5,5611. Variação do dia: -0,41%. Cotação de 11/11 às 17:40.
+> Fonte: AwesomeAPI.
+
+**CLIMA** (real, Open-Meteo: geocoding em português, só Brasil, e previsão diária de 5 dias; é informação do tempo, não previsão de colheita)
+> Tempo em Mandaguari, Paraná, próximos 5 dias:
+> qua 11/11: 16° a 25°, chuva de 3,5 mm
+> qui 12/11: 18° a 27°, sem chuva
+> (...)
+> Fonte: Open-Meteo. É informação do tempo, não previsão de colheita.
+
+**PEDE_CIDADE** (clima sem cidade; o estado vira `clima_cidade` e a próxima mensagem é a cidade; outra pergunta reconhecida tira do estado)
+> De qual cidade? Escreva só o nome, por exemplo "Mandaguari".
+
+**CIDADE_NAO_ENCONTRADA**
+> Não encontrei essa cidade no Brasil. Escreva só o nome, por exemplo "Mandaguari".
+
+**COTACAO_DEMO** (soja R$ 138/saca, milho R$ 68/saca, trigo R$ 82/saca, boi gordo R$ 345/arroba; valores fixos em `bot/cotacoes-demo.js`, praça "região de Mandaguari", data de hoje; não alimentam o alerta de preço)
+> Soja: R$ 138 por saca (região de Mandaguari, 11/11/2026).
+> Valor ilustrativo da demonstração, não é cotação real. No produto, a cotação vem oficial da cooperativa.
+
+**CONSULTA_FALHOU** (timeout de 5 s, erro da API ou resposta inválida; vale para dólar e clima)
+> Não consegui consultar agora, tente de novo em instantes.
+
+Sem chave ligada (`PRECOS_ATIVO=false` ou `CLIMA_ATIVO=false`), a parte correspondente responde `EM_BREVE`. Nenhuma dessas respostas diz se o preço vai subir ou cair nem recomenda vender: "previsão de preço" continua respondendo `PREVISAO`.
+
 **PEDE_GATILHO** (quando falta cultura ou preço)
 > Para criar o alerta, me diga a cultura e o preço da saca. Exemplo: "me avisa quando a soja passar de 110".
 
@@ -247,7 +282,10 @@ Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a
 | safra | "1", "safra", "conta", "custo", "saca", "colher", "colheita", "hectare", "alqueire", "prejuízo", "lucro", "e se" |
 | tributario | "2", "reforma", "imposto", "tributo", "IBS", "CBS", "contador", "nota fiscal", "contribuinte" |
 | humano | "3", "atendente", "pessoa", "falar com alguém", "humano" |
-| clima | "clima", "tempo", "chuva", "previsão do tempo", "temperatura" |
+| clima | "clima", "chuva", "chover", "temperatura", "previsão do tempo", "como está o tempo", "tempo em <cidade>" (cidade tirada da frase; sem cidade, `PEDE_CIDADE`) |
+| dolar | "dólar", "cotação do dólar" ("o dólar vai subir?" é `previsao`) |
+| cotacao_demo | palavra de preço ("preço", "cotação", "quanto está", "valor") + soja, milho, trigo, "boi gordo" ou arroba, sem número |
+| precos_clima | "5", "preços", "cotações" |
 | gatilho | "4", "me avisa quando", "alerta de preço", "avisa se passar", "meus alertas", "cancelar alerta" |
 | painel (Plus 4) | "painel", "gráfico", "ver minha safra" |
 | audio (Etapa 5) | "manda em áudio", "responde em áudio", "só texto", "sem áudio" |

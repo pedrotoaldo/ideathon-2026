@@ -3,6 +3,9 @@
 
 // Com o áudio ligado (AUDIO_ATIVO=true e chave em AUDIO_API_KEY) BOAS_VINDAS e MENU oferecem áudio; desligado, só texto.
 const AUDIO = require('./audio').audioAtivo();
+// Preços (dólar e cotações da demonstração) e clima, cada um atrás de uma chave do .env; a opção 5 do menu só aparece com alguma ligada
+const PRECOS = String(process.env.PRECOS_ATIVO || '').toLowerCase() === 'true';
+const CLIMA = String(process.env.CLIMA_ATIVO || '').toLowerCase() === 'true';
 
 const T = {
   BOAS_VINDAS: [
@@ -18,6 +21,7 @@ const T = {
     '2. Entender a reforma tributária',
     '3. Falar com uma pessoa',
     '4. Criar um alerta de preço da saca',
+    ...(PRECOS || CLIMA ? ['5. Preços e clima'] : []),
     AUDIO ? 'Pode responder com o número ou mandar um áudio.' : 'Pode responder com o número ou escrever.',
   ].join('\n'),
 
@@ -38,6 +42,15 @@ const T = {
   PERGUNTA_UNIDADE_AREA: 'Esses {valor} são hectares ou alqueires?',
   FORA_DA_FAIXA: 'Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?',
   PERGUNTA_CORRECAO: 'Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.',
+  CONSULTA_FALHOU: 'Não consegui consultar agora, tente de novo em instantes.',
+  PEDE_CIDADE: 'De qual cidade? Escreva só o nome, por exemplo "Mandaguari".',
+  CIDADE_NAO_ENCONTRADA: 'Não encontrei essa cidade no Brasil. Escreva só o nome, por exemplo "Mandaguari".',
+  PRECOS_CLIMA_MENU: [
+    'Posso mostrar:',
+    ...(PRECOS ? ['• Dólar de agora: escreva "dólar"', '• Soja, milho, trigo ou boi gordo: escreva, por exemplo, "preço da soja"'] : []),
+    ...(CLIMA ? ['• Tempo dos próximos 5 dias: escreva, por exemplo, "como está o tempo em Mandaguari"'] : []),
+    ...(PRECOS ? ['Os valores de soja, milho, trigo e boi gordo são ilustrativos da demonstração.'] : []),
+  ].join('\n'),
   CONFIRMA_NAO_ENTENDI: 'Não entendi. Os dados estão certos? Responda sim ou não.',
   NUMERO_SOLTO: 'Esse número é o quê? Pode dizer, por exemplo: "10 hectares", "custo de 45 mil", "60 sacas por hectare" ou "saca a 100".',
   CONFIRMA_HIPOTESE: 'Responda "sim" ou me diga os números certos.',

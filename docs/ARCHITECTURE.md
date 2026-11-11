@@ -56,6 +56,8 @@ Módulos:
 | `bot/evolution.js` | `sendText` (números começando com `5500`, fictícios, nunca são enviados: servem aos testes do simulador) (e, na Etapa 5, `getBase64FromMediaMessage` e `sendWhatsAppAudio`) |
 | `bot/db.js` | Pool `pg` e consultas (`conversa`, `mensagem`, `resposta`, `config`) |
 | `bot/audio.js` | Transcrição (`/audio/transcriptions`, multipart, `language=pt`) e voz (`/audio/speech`) pela OpenAI (`AUDIO_*`); `audioAtivo()` (chave `AUDIO_ATIVO=true` + `AUDIO_API_KEY`); `escolherFala` decide o que a IAra fala (resumo falado da conta ou texto de até 400 caracteres) |
+| `bot/consultas.js` | Consultas reais sem chave, com timeout de 5 s e sem nova tentativa: dólar (AwesomeAPI) e clima de 5 dias (Open-Meteo, geocoding BR em português). Chaves `PRECOS_ATIVO` e `CLIMA_ATIVO` |
+| `bot/cotacoes-demo.js` | Cotações fictícias de soja, milho, trigo e boi gordo, sempre com o aviso de valor ilustrativo; não alimentam o alerta de preço |
 | `src/calc/safra.cjs` | Todos os números (importado com `require`) |
 | `scripts/simular-mensagem.mjs` | Dispara payloads `MESSAGES_UPSERT` falsos contra o bot (roteiros sem celular) |
 | `scripts/disparar-alerta.mjs` | Alerta de preço simulado da demo (seção 8a) |
