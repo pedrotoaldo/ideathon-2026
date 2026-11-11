@@ -304,7 +304,7 @@ Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a
 | humano | "3", "atendente", "pessoa", "falar com alguém", "humano" |
 | clima | "clima", "chuva", "chover", "temperatura", "previsão do tempo", "como está o tempo", "tempo em <cidade>" (cidade tirada da frase; sem cidade, `PEDE_CIDADE`) |
 | dolar | "dólar", "cotação do dólar" ("o dólar vai subir?" é `previsao`) |
-| cotacao_demo | palavra de preço ("preço", "cotação", "quanto está", "valor") + soja, milho, trigo, "boi gordo" ou arroba, sem número |
+| cotacao_demo | palavra de preço ("preço", "cotação", "quanto está", "valor") + soja, milho, trigo, "boi gordo" ou arroba, sem número. Também vale no meio da conta (coleta, confirmação e perfil): a IAra mostra a cotação e repete a pergunta pendente |
 | precos_clima | "5", "preços", "cotações" |
 | gatilho | "4", "me avisa quando", "alerta de preço", "avisa se passar", "meus alertas", "cancelar alerta" |
 | painel (Plus 4) | "painel", "gráfico", "ver minha safra" |

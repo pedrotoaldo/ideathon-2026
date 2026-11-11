@@ -560,7 +560,7 @@ async function tratar(conversa, texto, deps) {
     else if (c.pendente_area != null) say(T.PERGUNTA_UNIDADE_AREA.replace('{valor}', S.formatarDecimal(c.pendente_area)), 'safra');
     else {
       const falta = c.campo_pedido || S.camposFaltantes(dados.safra || {})[0];
-      if (falta && T.PERGUNTA_CAMPO[falta]) say(T.PERGUNTA_CAMPO[falta], 'safra');
+      if (falta && T.PERGUNTA_CAMPO[falta]) perguntar(falta);
       else say(T.PEDE_SAFRA, 'safra');
     }
   }
@@ -613,6 +613,7 @@ async function tratar(conversa, texto, deps) {
   } else if (r.intencao === 'cotacao_demo') {
     if (deps.precosAtivo) say(cotacoesDemo.responder(r.produto), 'cotacao_demo');
     else say(T.EM_BREVE, 'cotacao_demo');
+    if (r.noFluxo) repetirPergunta(); // dentro da conta: a pergunta pendente volta logo depois da cotação
   } else if (r.intencao === 'precos_clima') {
     say(deps.precosAtivo || deps.climaAtivo ? T.PRECOS_CLIMA_MENU : T.EM_BREVE, 'precos_clima');
   } else if (['alertas', 'painel'].includes(r.intencao)) {

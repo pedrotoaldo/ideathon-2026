@@ -449,6 +449,26 @@ test('REGRESSÃO áudio: "Tudo bem?" no meio da conta responde com simpatia e re
   assert.match((await passo({ estado: 'menu', dados: {} }, 'Tudo bem?', extrair)).texto, /Como posso ajudar/);
 });
 
+test('REGRESSÃO áudio: "qual o preço da soja?" no meio da conta mostra a cotação da demo e repete a pergunta', async () => {
+  const extrair = llm();
+  const cotacoes = require('./cotacoes-demo');
+  const base = () => ({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } });
+  const p = await tratar(base(), 'Qual o preço da soja?', { extrair, precosAtivo: true });
+  const texto = p.respostas.map((x) => x.texto).join(' | ');
+  assert.ok(texto.includes('Soja: R$ 138 por saca'));
+  assert.ok(texto.includes('Qual o tamanho da área?'));
+  assert.equal(p.estado, 'coletando_safra');
+  assert.equal(p.dados.coleta.campo_pedido, 'area_ha');
+  assert.equal(extrair.chamadas.length, 0);
+  assert.ok(cotacoes.PRODUTOS.soja);
+  // na pergunta do preço, a cotação não atrapalha a oferta de referência
+  const q = await tratar({ estado: 'coletando_safra', dados: { safra: { cultura: 'soja' }, coleta: { campo_pedido: 'preco' } } }, 'quanto está a soja?', { extrair, precosAtivo: true });
+  assert.match(q.respostas.map((x) => x.texto).join(' | '), /usa esse/);
+  assert.equal(q.dados.coleta.oferta_preco, 138);
+  // número com a pergunta continua sendo dado da safra, não consulta
+  assert.equal(rotear('preço da soja 100', 'coletando_safra').intencao, 'fluxo');
+});
+
 test('REGRESSÃO celular: conversa fiada ("você está bem?") não vira explicação do campo', async () => {
   const base = () => ({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } });
   for (const t of ['você está bem?', 'tudo bem com você?', 'como vai você?', 'quem é você?']) {

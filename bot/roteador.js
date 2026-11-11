@@ -161,6 +161,11 @@ function rotear(texto, estado) {
   if (tem(t, AUDIO) && !/\d/.test(t)) return { intencao: 'audio' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
   if (emFluxo && CONTINUAR.includes(semAlongar(t))) return { intencao: 'continuar' };
+  // Pergunta de preço de soja, milho, trigo ou boi no meio da conta: responde a cotação e volta à pergunta pendente
+  if (['coletando_safra', 'confirmando_safra', 'perfil_tributario'].includes(estado)) {
+    const produto = produtoDoTexto(t);
+    if (produto) return { intencao: 'cotacao_demo', produto, noFluxo: true };
+  }
   if (emFluxo) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
   // "1" seguido de outras linhas (mensagens agrupadas pelo debounce): escolhe a safra e o resto segue como resposta a ela
   const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
