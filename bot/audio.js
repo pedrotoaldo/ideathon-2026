@@ -60,6 +60,9 @@ async function transcrever(buffer, mimetype, { fetchFn } = {}) {
   return String((j && j.text) || '').trim();
 }
 
+// Como a IAra deve soar (parâmetro instructions do /audio/speech); pode ser trocado em TTS_INSTRUCOES
+const INSTRUCOES_VOZ = 'Fale em português do Brasil como uma mulher simpática do interior do Paraná, conversando com um produtor rural conhecido: tom caloroso e próximo, ritmo calmo, pausas naturais entre as ideias, sorrindo na voz. Nada de tom de locutora, de URA ou de robô.';
+
 // Texto -> áudio em base64 (mp3 por padrão; a Evolution converte em nota de voz)
 async function sintetizar(texto, { fetchFn } = {}) {
   const modelo = process.env.AUDIO_MODEL_TTS || 'gpt-4o-mini-tts';
@@ -69,7 +72,7 @@ async function sintetizar(texto, { fetchFn } = {}) {
     input: texto,
     response_format: process.env.TTS_FORMATO || 'mp3',
   };
-  if (/gpt-4o/.test(modelo)) corpo.instructions = 'Fale em português do Brasil, com voz calorosa e calma, em ritmo natural, como uma assistente simpática.';
+  if (!/^tts-1/.test(modelo)) corpo.instructions = process.env.TTS_INSTRUCOES || INSTRUCOES_VOZ; // sempre enviado (tts-1 não aceita)
   const r = await postar(base() + '/audio/speech', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + process.env.AUDIO_API_KEY, 'Content-Type': 'application/json' },
@@ -104,4 +107,4 @@ function escolherFala(respostas) {
   return paraFala(r.texto);
 }
 
-module.exports = { audioAtivo, transcrever, sintetizar, paraFala, escolherFala, extensao, LIMITE_FALA };
+module.exports = { INSTRUCOES_VOZ, audioAtivo, transcrever, sintetizar, paraFala, escolherFala, extensao, LIMITE_FALA };

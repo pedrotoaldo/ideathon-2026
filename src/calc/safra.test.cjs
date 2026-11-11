@@ -92,13 +92,31 @@ test('perfil provável: não contribuinte, integrado, acima do limite, alertas',
   }
 });
 
-test('resumo falado curto, sem listas', () => {
+test('porExtenso e reaisFalados: números em português, arredondados para falar', () => {
+  assert.equal(s.porExtenso(53), 'cinquenta e três');
+  assert.equal(s.porExtenso(100), 'cem');
+  assert.equal(s.porExtenso(101), 'cento e um');
+  assert.equal(s.porExtenso(118000), 'cento e dezoito mil');
+  assert.equal(s.porExtenso(2500), 'dois mil e quinhentos');
+  assert.equal(s.porExtenso(1200000), 'um milhão e duzentos mil');
+  assert.equal(s.reaisFalados(3000), 'três mil reais');
+  assert.equal(s.reaisFalados(118144), 'cento e dezoito mil reais');
+  assert.equal(s.reaisFalados(-3000), 'três mil reais');
+  assert.equal(s.reaisFalados(2480), 'dois mil e quinhentos reais');
+});
+
+test('resumo falado conversado: frases curtas, valores aproximados por extenso, sem símbolos nem listas', () => {
   const t = s.montarResumoFalado(s.calcularSafra(REF));
-  assert.match(t, /pelo menos 45 sacas por hectare/);
-  assert.match(t, /R\$ 75\b/);
-  assert.match(t, /20 por cento menos, sobram R\$ 3\.000/);
-  assert.doesNotMatch(t, /•/);
+  assert.match(t, /^Olha, fiz a sua conta\./);
+  assert.match(t, /Então, cada saca te custa uns setenta e cinco reais\./);
+  assert.match(t, /pelo menos uns quarenta e cinco sacas por hectare/);
+  assert.match(t, /vinte por cento menor, ainda sobram uns três mil reais/);
+  assert.match(t, /Os números certinhos eu mandei por escrito/);
+  assert.doesNotMatch(t, /[\d•$%\/]/); // nada de dígitos nem símbolos: tudo por extenso
   assert.ok(t.length < 400);
+  const real = s.montarResumoFalado(s.calcularSafra({ area_ha: 48.4, custo_total: 180000, produtividade: 70, preco: 110 }));
+  assert.match(real, /uns cinquenta e três reais/);
+  assert.match(real, /uns cento e dezoito mil reais/);
 });
 
 test('gatilho de preço: dispara só para a cultura certa, ativo e com preço >= alvo', () => {

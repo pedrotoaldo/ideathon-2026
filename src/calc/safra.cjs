@@ -313,14 +313,58 @@ function calcularCobertura({ custo_total, sacas_fixadas, preco_fixado, producao_
 }
 
 // ---------- Resposta falada (áudio da IAra) ----------
-// Versão curta para virar áudio: 2 a 3 frases, sem listas. O texto completo vai junto por escrito.
+// Versão curta e conversada para virar áudio: frases curtas, valores arredondados por extenso, sem listas nem símbolos.
+// Os números exatos continuam no texto escrito, que vai logo depois.
+
+const UNIDADES = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+const DEZENAS = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+const CENTENAS = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+function ate999(n) {
+  if (n < 20) return UNIDADES[n];
+  if (n < 100) return DEZENAS[Math.floor(n / 10)] + (n % 10 ? ' e ' + UNIDADES[n % 10] : '');
+  if (n === 100) return 'cem';
+  return CENTENAS[Math.floor(n / 100)] + (n % 100 ? ' e ' + ate999(n % 100) : '');
+}
+
+// Número inteiro (0 a 999 milhões) por extenso, em português: 53 -> "cinquenta e três", 118000 -> "cento e dezoito mil"
+function porExtenso(n) {
+  n = Math.round(Math.abs(n));
+  if (n < 1000) return ate999(n);
+  if (n < 1e6) {
+    const mil = Math.floor(n / 1000);
+    const r = n % 1000;
+    const cabeca = mil === 1 ? 'mil' : ate999(mil) + ' mil';
+    return cabeca + (r ? (r < 100 || r % 100 === 0 ? ' e ' : ' ') + ate999(r) : '');
+  }
+  const mi = Math.floor(n / 1e6);
+  const r = n % 1e6;
+  const cabeca = mi === 1 ? 'um milhão' : porExtenso(mi) + ' milhões';
+  return cabeca + (r ? (r < 100 || r % 1000 === 0 || r % 100 === 0 ? ' e ' : ' ') + porExtenso(r) : '');
+}
+
+// Valor em reais arredondado para falar ("uns três mil reais"): de 10 em 10 até mil, de 100 em 100 até 10 mil,
+// de mil em mil até 1 milhão e de 10 mil em 10 mil acima disso
+function reaisFalados(valor) {
+  const v = Math.abs(valor);
+  const passo = v < 1000 ? 10 : v < 10000 ? 100 : v < 1e6 ? 1000 : 10000;
+  const r = Math.max(passo, Math.round(v / passo) * passo);
+  return porExtenso(r) + ' reais';
+}
+
 function montarResumoFalado(calc) {
   const d = calc.cenarios.desfavoravel;
+  const sacas = porExtenso(calc.produtividade_minima);
+  const porSaca = Math.round(calc.preco_equilibrio);
+  const custoSaca = porExtenso(porSaca) + (porSaca === 1 ? ' real' : ' reais');
+  const resultado = Math.abs(d.resultado) < 0.005
+    ? 'a conta empata, sem sobra nem falta'
+    : (d.resultado > 0 ? 'ainda sobram uns ' : 'faltam uns ') + reaisFalados(d.resultado);
   return (
-    'Fiz a sua conta. Para empatar, você precisa colher pelo menos ' + formatarDecimal(calc.produtividade_minima) +
-    ' sacas por hectare, e seu custo por saca fica em ' + formatarReais(calc.preco_equilibrio) + '. ' +
-    'Se colher ' + Math.abs(d.pct) + ' por cento menos, ' + textoResultado(d.resultado) + '. ' +
-    'Mandei os detalhes por escrito aqui embaixo.'
+    'Olha, fiz a sua conta. Para empatar, você precisa colher pelo menos uns ' + sacas + ' sacas por hectare. ' +
+    'Então, cada saca te custa uns ' + custoSaca + '. ' +
+    'E se a colheita vier ' + porExtenso(Math.abs(d.pct)) + ' por cento menor, ' + resultado + '. ' +
+    'Os números certinhos eu mandei por escrito, logo abaixo.'
   );
 }
 
@@ -365,7 +409,7 @@ const API = {
   round2, converterAreaParaHa, converterProdutividadeParaScHa, mesclarExtracao,
   camposFaltantes, camposForaDaFaixa, calcularSafra, calcularESe,
   formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao, avisoFaixaCultura, avisosSanidade, LIMITES_SANIDADE_PADRAO, normalizarCultura, FAIXAS_CULTURA_PADRAO,
-  perfilProvavel, montarResumo, calcularCobertura, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
+  perfilProvavel, montarResumo, calcularCobertura, montarResumoFalado, porExtenso, reaisFalados, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = API;

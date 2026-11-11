@@ -157,7 +157,7 @@ const cenariosAudio = AUDIO_LIGADO ? [
       ['oi', [/Pode falar comigo por texto ou por áudio/]],
       ['1', [/Vamos fazer a conta/]],
       ['plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez', [/Entendi: "plantei vinte alqueires/, /48,4 ha \(20 alqueires\)/, /\[áudio\]/], [], { audio: true }],
-      ['isso', [/\[áudio\] Fiz a sua conta/, /custo por saca é R\$ 61,98/, /sobram R\$ 139\.440/], [], { audio: true }],
+      ['isso', [/\[áudio\] Olha, fiz a sua conta/, /custo por saca é R\$ 61,98/, /sobram R\$ 139\.440/], [], { audio: true }],
       ['só texto', [/daqui pra frente só texto/], [/\[áudio\]/]],
       ['e se a saca for 70?', [/Equilíbrio|equilíbrio/], [/\[áudio\]/]],
       ['manda em áudio', [/vou responder em áudio também/]],

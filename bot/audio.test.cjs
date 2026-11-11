@@ -32,6 +32,16 @@ test('transcrever: multipart em português para /audio/transcriptions', async ()
   assert.equal(visto.op.body.get('file').name, 'audio.ogg');
 });
 
+test('sintetizar: sempre envia instructions (mulher simpática do interior do Paraná, sem tom de robô)', async () => {
+  let corpo;
+  const fetchFn = async (url, op) => { corpo = JSON.parse(op.body); return { ok: true, arrayBuffer: async () => Buffer.from('mp3') }; };
+  await sintetizar('Olha, fiz a sua conta.', { fetchFn });
+  assert.match(corpo.instructions, /mulher simpática do interior do Paraná/);
+  assert.match(corpo.instructions, /sorrindo na voz/);
+  assert.match(corpo.instructions, /Nada de tom de locutora, de URA ou de robô\./);
+  assert.equal(corpo.model, 'gpt-4o-mini-tts');
+});
+
 test('transcrever: tenta de novo em 503 e desiste em 401', async () => {
   let n = 0;
   const f503 = async () => (++n === 1 ? { ok: false, status: 503 } : { ok: true, json: async () => ({ text: 'oi' }) });
@@ -104,8 +114,8 @@ test('a conta da safra traz o texto falado (montarResumoFalado) na resposta do r
   const safra = { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 };
   const p = await passo({ estado: 'confirmando_safra', dados: { safra } }, 'sim');
   const res = p.r.respostas.find((x) => x.falado);
-  assert.match(res.falado, /Fiz a sua conta/);
-  assert.match(res.falado, /45 sacas por hectare/);
+  assert.match(res.falado, /^Olha, fiz a sua conta/);
+  assert.match(res.falado, /quarenta e cinco sacas por hectare/);
   assert.match(res.texto, /Pela sua conta/);
 });
 
