@@ -10,11 +10,11 @@ export function novoId() {
   return 'SIM' + randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
 }
 
-// Envia uma mensagem. opcoes: { audio, imagem, id }. Devolve o id da mensagem.
+// Envia uma mensagem. opcoes: { audio, imagem, id, segundos }. Com `audio`, o texto vira a transcrição simulada (só números 5500...). Devolve o id da mensagem.
 export async function enviar(numero, texto, opcoes = {}) {
   if (!String(numero).startsWith('5500')) throw new Error('Use um número fictício começando com 5500 (nada é enviado de verdade).');
   const id = opcoes.id || novoId();
-  const message = opcoes.audio ? { audioMessage: { seconds: 5 } } : opcoes.imagem ? { imageMessage: {} } : { conversation: texto };
+  const message = opcoes.audio ? { audioMessage: { seconds: opcoes.segundos || 5, ...(texto ? { transcricaoSimulada: texto } : {}) } } : opcoes.imagem ? { imageMessage: {} } : { conversation: texto };
   const caminho = new URL(process.env.BOT_WEBHOOK_URL).pathname;
   const r = await fetch(`http://localhost:${process.env.BOT_PORT || 3000}${caminho}`, {
     method: 'POST',

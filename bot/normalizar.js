@@ -51,6 +51,11 @@ function normalizar(evento) {
     tipo,
     texto: texto.trim(),
     duracao_audio: msg.audioMessage ? Number(msg.audioMessage.seconds) || null : null,
+    // base64 do áudio quando a Evolution o manda no próprio webhook (WEBHOOK_BASE64) e o mimetype
+    base64: msg.audioMessage ? (typeof msg.base64 === 'string' ? msg.base64 : typeof d.base64 === 'string' ? d.base64 : null) : null,
+    mimetype: msg.audioMessage ? msg.audioMessage.mimetype || null : null,
+    // só o simulador usa: transcrição pronta para números fictícios (5500...)
+    transcricao_simulada: msg.audioMessage && typeof msg.audioMessage.transcricaoSimulada === 'string' ? msg.audioMessage.transcricaoSimulada : null,
   };
 }
 

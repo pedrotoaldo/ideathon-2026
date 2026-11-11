@@ -228,6 +228,7 @@ async function tratar(conversa, texto, deps) {
     };
     delete dados.coleta;
     say(S.montarRespostaSafra(calc), 'safra');
+    out.respostas[out.respostas.length - 1].falado = S.montarResumoFalado(calc); // texto para a voz da IAra (Etapa 5)
     say(T.OFERTA_PROXIMO, 'safra');
     out.estado = 'resultado_safra';
   }
@@ -381,7 +382,15 @@ async function tratar(conversa, texto, deps) {
   } else if (r.intencao === 'resumo') {
     // Mostra só o que existe (safra e/ou perfil) e diz como completar; não muda o estado da conversa
     say(S.montarResumo(dados.safra, dados.perfil), 'resumo');
-  } else if (['gatilho', 'clima', 'painel', 'audio'].includes(r.intencao)) {
+  } else if (r.intencao === 'audio') {
+    if (deps.audioAtivo) {
+      const desligar = /(^| )(so texto|so por texto|sem audio|para de mandar audio)( |$)/.test(normalizarTexto(texto));
+      out.responde_audio = !desligar;
+      say(desligar ? T.AUDIO_DESLIGADO : T.AUDIO_LIGADO, 'audio');
+    } else {
+      say(T.AUDIO_AINDA_NAO, 'audio');
+    }
+  } else if (['gatilho', 'clima', 'painel'].includes(r.intencao)) {
     say(T.EM_BREVE, r.intencao); // entram na Etapa 4, na Etapa 5 e nas Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);

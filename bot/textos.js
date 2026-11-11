@@ -1,11 +1,14 @@
 // Textos fixos da IAra. Espelham docs/CONVERSA.md (seção 1): mudou aqui, muda lá, e vice-versa.
 // Números calculados NÃO ficam aqui: saem de src/calc/safra.cjs.
 
+// Com o áudio ligado (AUDIO_ATIVO=true e chave em AUDIO_API_KEY) BOAS_VINDAS e MENU oferecem áudio; desligado, só texto.
+const AUDIO = require('./audio').audioAtivo();
+
 const T = {
   BOAS_VINDAS: [
     'Oi! Eu sou a IAra, assistente virtual do Agro na Medida, em demonstração no Ideathon Mandaguari 2026.',
     'Ajudo a fazer a conta da safra, a entender a reforma tributária e aviso quando o preço da saca chegar onde você quer.',
-    'Por enquanto, me escreva por texto.',
+    AUDIO ? 'Pode falar comigo por texto ou por áudio.' : 'Por enquanto, me escreva por texto.',
     'Use dados de exemplo: não mande CPF, CNPJ nem dados bancários. Para apagar a conversa, escreva "apagar meus dados".',
   ].join('\n'),
 
@@ -15,7 +18,7 @@ const T = {
     '2. Entender a reforma tributária',
     '3. Falar com uma pessoa',
     '4. Criar um alerta de preço da saca',
-    'Pode responder com o número ou escrever.',
+    AUDIO ? 'Pode responder com o número ou mandar um áudio.' : 'Pode responder com o número ou escrever.',
   ].join('\n'),
 
   PEDE_SAFRA: [
@@ -72,6 +75,10 @@ const T = {
 
   FORA_ESCOPO: 'Eu só ajudo com a conta da safra e com a reforma tributária para o produtor. Escreva "menu" para ver as opções.',
   EM_BREVE: 'Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.',
+  AUDIO_LIGADO: 'Combinado, vou responder em áudio também. Os números continuam indo por escrito.',
+  AUDIO_DESLIGADO: 'Certo, daqui pra frente só texto. Se quiser áudio de novo, escreva "manda em áudio".',
+  AUDIO_NAO_ENTENDI: 'Não consegui ouvir esse áudio direito. Pode gravar de novo, mais perto do microfone, ou escrever?',
+  AUDIO_LONGO: 'Esse áudio ficou longo demais para eu ouvir. Pode mandar um de até 1 minuto ou escrever?',
   SO_TEXTO_AUDIO: 'Por enquanto eu entendo só texto. Pode me mandar a pergunta escrita?',
   AUDIO_AINDA_NAO: 'Por enquanto eu entendo só texto. Pode escrever?',
   LIMITE: 'Recebi muitas mensagens seguidas. Me dá uns minutinhos e tenta de novo.',

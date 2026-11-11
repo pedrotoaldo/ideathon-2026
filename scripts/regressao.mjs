@@ -115,6 +115,42 @@ const cenarios = [
   },
 ];
 
+const AUDIO_LIGADO = String(process.env.AUDIO_ATIVO).toLowerCase() === 'true'; // bot de teste: AUDIO_ATIVO=true AUDIO_API_KEY=simulado
+const cenariosAudio = AUDIO_LIGADO ? [
+  {
+    nome: 'Roteiros B e F (áudio simulado): Entendi, voz da IAra, texto com os números e "só texto"',
+    numero: '5500900000012',
+    passos: [
+      ['oi', [/Pode falar comigo por texto ou por áudio/]],
+      ['1', [/Vamos fazer a conta/]],
+      ['plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez', [/Entendi: "plantei vinte alqueires/, /48,4 ha \(20 alqueires\)/, /\[áudio\]/], [], { audio: true }],
+      ['isso', [/\[áudio\] Fiz a sua conta/, /custo por saca é R\$ 61,98/, /sobram R\$ 139\.440/], [], { audio: true }],
+      ['só texto', [/daqui pra frente só texto/], [/\[áudio\]/]],
+      ['e se a saca for 70?', [/Equilíbrio|equilíbrio/], [/\[áudio\]/]],
+      ['manda em áudio', [/vou responder em áudio também/]],
+      ['menu', [/Como posso ajudar/], [/\[áudio\]/]],
+    ],
+  },
+  {
+    nome: 'Áudio sem transcrição ou longo demais: pede para repetir; nunca quebra',
+    numero: '5500900000013',
+    passos: [
+      ['oi', [/Oi!/]],
+      ['', [/Não consegui ouvir esse áudio/], [], { audio: true }],
+    ],
+  },
+] : [
+  {
+    nome: 'Áudio desligado (AUDIO_ATIVO=false): AUDIO_AINDA_NAO',
+    numero: '5500900000012',
+    passos: [
+      ['oi', [/Por enquanto, me escreva por texto/]],
+      ['', [/Por enquanto eu entendo só texto/], [], { audio: true }],
+      ['manda em áudio', [/Por enquanto eu entendo só texto/]],
+    ],
+  },
+];
+
 const JANELA = Number(process.env.DEBOUNCE_MS ?? 2500); // a mesma do bot (lida do mesmo .env)
 const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -200,7 +236,7 @@ async function rodarCenario(c) {
       if (!ok) falhar(linhas, `sobraram ${q.rows[0].n} linhas do número`);
       continue;
     }
-    const respostas = await conversar(c.numero, texto);
+    const respostas = await conversar(c.numero, texto, extra.audio ? { audio: true } : undefined);
     const todo = respostas.map((r) => r.texto).join('\n');
     const ok = respostas.length > 0 && deve.every((re) => re.test(todo)) && naoDeve.every((re) => !re.test(todo));
     linhas.push(`  ${ok ? '✔' : '✖'} "${texto}"`);
@@ -214,7 +250,7 @@ async function rodarCenario(c) {
 }
 
 // Cenários em paralelo (números diferentes), para o debounce não alongar a rodada
-const saidas = await Promise.all([...cenarios, ...cenariosDebounce].map(rodarCenario));
+const saidas = await Promise.all([...cenarios, ...cenariosAudio, ...cenariosDebounce].map(rodarCenario));
 for (const linhas of saidas) console.log(linhas.join('\n'));
 
 await fechar();

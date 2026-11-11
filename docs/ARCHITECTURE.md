@@ -55,7 +55,7 @@ Módulos:
 | `bot/llm.js` | `POST {LLM_BASE_URL}/chat/completions` (`response_format: json_object`), timeout de 12 s (`LLM_TIMEOUT_MS`) e até 2 novas tentativas em 429/5xx, timeout e erro de rede. Se esgotar: `LlmIndisponivel` → `ERRO_TEMPORARIO` + menu numérico |
 | `bot/evolution.js` | `sendText` (números começando com `5500`, fictícios, nunca são enviados: servem aos testes do simulador) (e, na Etapa 5, `getBase64FromMediaMessage` e `sendWhatsAppAudio`) |
 | `bot/db.js` | Pool `pg` e consultas (`conversa`, `mensagem`, `resposta`, `config`) |
-| `bot/audio.js` (Etapa 5) | Transcrição e voz pela OpenAI (`AUDIO_*`) |
+| `bot/audio.js` | Transcrição (`/audio/transcriptions`, multipart, `language=pt`) e voz (`/audio/speech`) pela OpenAI (`AUDIO_*`); `audioAtivo()` (chave `AUDIO_ATIVO=true` + `AUDIO_API_KEY`); `escolherFala` decide o que a IAra fala (resumo falado da conta ou texto de até 400 caracteres) |
 | `src/calc/safra.cjs` | Todos os números (importado com `require`) |
 | `scripts/simular-mensagem.mjs` | Dispara payloads `MESSAGES_UPSERT` falsos contra o bot (roteiros sem celular) |
 | `scripts/disparar-alerta.mjs` | Alerta de preço simulado da demo (seção 8a) |

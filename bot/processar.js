@@ -5,7 +5,8 @@
 
 const T = require('./textos');
 const db = require('./db');
-const { enviarTexto, enviarPresenca } = require('./evolution');
+const { enviarTexto, enviarPresenca, baixarMidia, enviarAudio, ehSimulado } = require('./evolution');
+const { audioAtivo, transcrever, sintetizar, escolherFala } = require('./audio');
 const { normalizar, mascarar } = require('./normalizar');
 const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
@@ -62,6 +63,30 @@ const grupo = criarDebounce({
   aoFechar: (numero, itens) => { enfileirar(numero, () => responderGrupo(numero, itens)); },
 });
 
+// ---------- Áudio (Etapa 5) ----------
+const MAX_SEGUNDOS_AUDIO = 60;
+
+async function transcreverAudio(m) {
+  if (ehSimulado(m.numero)) return m.transcricao_simulada || ''; // números fictícios nunca chamam a OpenAI
+  const { base64, mimetype } = await baixarMidia(m);
+  return transcrever(Buffer.from(base64, 'base64'), mimetype);
+}
+
+// Voz da IAra: falha em qualquer ponto = só texto, sem erro para o usuário
+async function falar(m, texto, t0) {
+  try {
+    if (!ehSimulado(m.destino)) {
+      const b64 = await sintetizar(texto);
+      await enviarAudio(m.destino, b64);
+    }
+    await db.registrarResposta({ message_id: m.message_id, numero: m.numero, intencao: 'audio', texto: '[áudio] ' + texto, usou_llm: false, latencia_ms: Date.now() - t0 });
+    return true;
+  } catch (e) {
+    console.error(`[voz] falhou para ${mascarar(m.numero)}, seguindo só com texto: ${e.message}`);
+    return false;
+  }
+}
+
 // ---------- Parte A: uma mensagem ----------
 async function processar(evento) {
   const t0 = Date.now();
@@ -114,10 +139,31 @@ async function processar(evento) {
       return;
     }
 
-    if (m.tipo === 'audio') {
+    if (m.tipo === 'audio' && !audioAtivo()) {
       await db.carregarConversa(m.numero);
       await responder(T.AUDIO_AINDA_NAO, 'audio_ainda_nao');
       log(m, 'audio_ainda_nao', t0);
+    } else if (m.tipo === 'audio') {
+      // Transcreve e segue como texto, passando pelo agrupamento
+      if (m.duracao_audio && m.duracao_audio > MAX_SEGUNDOS_AUDIO) {
+        await db.carregarConversa(m.numero);
+        await responder(T.AUDIO_LONGO, 'audio_longo');
+        log(m, 'audio_longo', t0);
+        return;
+      }
+      let texto = '';
+      try {
+        texto = await transcreverAudio(m);
+      } catch (e) {
+        console.error(`[transcrição] falhou para ${mascarar(m.numero)}: ${e.message}`);
+      }
+      if (!texto) {
+        await db.carregarConversa(m.numero);
+        await responder(T.AUDIO_NAO_ENTENDI, 'audio_nao_entendi');
+        log(m, 'audio_nao_entendi', t0);
+        return;
+      }
+      grupo.adicionar(m.numero, { m: { ...m, texto, deAudio: true }, t0 });
     } else if (m.tipo === 'midia') {
       await db.carregarConversa(m.numero);
       await responder(T.SO_TEXTO_AUDIO, 'so_texto');
@@ -137,7 +183,8 @@ async function responderGrupo(numero, itens) {
   const m = itens[itens.length - 1].m; // as respostas ficam ligadas à última mensagem do grupo
   const t0 = itens[0].t0; // a latência conta desde a primeira
   const texto = itens.map((i) => i.m.texto).filter(Boolean).join('\n');
-  const extra = itens.length > 1 ? `agrupadas=${itens.length}` : '';
+  const temAudio = itens.some((i) => i.m.deAudio);
+  const extra = [itens.length > 1 ? `agrupadas=${itens.length}` : '', temAudio ? 'audio' : ''].filter(Boolean).join(' ');
   const responder = criarResponder(m, t0);
   let intencao = 'erro';
 
@@ -151,7 +198,7 @@ async function responderGrupo(numero, itens) {
       await db.salvarEstado(m.numero, 'menu');
     } else {
       const faixasCultura = await db.config('faixas_cultura', undefined);
-      const r = await tratar(conversa, texto, { extrair, faixasCultura, tributario: responderTributario });
+      const r = await tratar(conversa, texto, { extrair, faixasCultura, tributario: responderTributario, audioAtivo: audioAtivo() });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
         intencao = 'apagar';
@@ -162,6 +209,19 @@ async function responderGrupo(numero, itens) {
         return;
       }
       if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
+      // Mostra a transcrição quando a conversa está coletando dados por voz
+      if (temAudio && ['coletando_safra', 'perfil_tributario'].includes(conversa.estado)) {
+        await responder('Entendi: "' + texto.replace(/\n+/g, ' ').slice(0, 300) + '"', 'transcricao');
+      }
+      // Preferência de áudio: comando explícito, ou áudio recebido liga
+      let querAudio = !!conversa.responde_audio;
+      if (r.responde_audio !== undefined) querAudio = r.responde_audio;
+      else if (temAudio) querAudio = true;
+      if (audioAtivo()) {
+        if (querAudio !== !!conversa.responde_audio) await db.setRespondeAudio(m.numero, querAudio);
+        const fala = querAudio ? escolherFala(r.respostas) : null;
+        if (fala) await falar(m, fala, t0); // áudio primeiro, texto com os números logo depois
+      }
       for (const x of r.respostas) {
         intencao = x.intencao;
         await responder(x.texto, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });

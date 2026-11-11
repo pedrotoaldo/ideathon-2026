@@ -12,6 +12,8 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > Por enquanto, me escreva por texto.
 > Use dados de exemplo: não mande CPF, CNPJ nem dados bancários. Para apagar a conversa, escreva "apagar meus dados".
 
+> Variante com o áudio ligado (`AUDIO_ATIVO=true`): a terceira linha vira "Pode falar comigo por texto ou por áudio." Quem escolhe é `bot/textos.js`, na hora de subir o bot.
+
 **MENU**
 > Como posso ajudar?
 > 1. Fazer a conta da safra
@@ -19,6 +21,7 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > 3. Falar com uma pessoa
 > 4. Criar um alerta de preço da saca
 > Pode responder com o número ou escrever.
+> Variante com o áudio ligado: a última linha vira "Pode responder com o número ou mandar um áudio."
 
 **PEDE_SAFRA**
 > Vamos fazer a conta. Me conte, do seu jeito: quantos hectares ou alqueires, quanto vai gastar no total, quantas sacas por hectare espera colher e o preço da saca.
@@ -196,6 +199,12 @@ Os textos abaixo marcados com (Plus) só entram nas Fases Plus.
 > Aqui está o painel da sua safra, com os números em gráfico: {link}
 > O link vale por 7 dias e é só seu. Não compartilhe.
 
+**AUDIO_NAO_ENTENDI** (a transcrição falhou ou veio vazia)
+> Não consegui ouvir esse áudio direito. Pode gravar de novo, mais perto do microfone, ou escrever?
+
+**AUDIO_LONGO** (áudio com mais de 60 segundos)
+> Esse áudio ficou longo demais para eu ouvir. Pode mandar um de até 1 minuto ou escrever?
+
 **AUDIO_LIGADO** (Etapa 5)
 > Combinado, vou responder em áudio também. Os números continuam indo por escrito.
 
@@ -233,9 +242,10 @@ Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a
 Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gatilho`, `aguardando_resposta_alerta`), toda mensagem é tratada como resposta do fluxo, exceto "menu", "3" e "apagar meus dados".
 
 ## 2.1 Áudio (Etapa 5 do PLAN; OpenAI)
-- Até a Etapa 5, qualquer áudio recebido responde `AUDIO_AINDA_NAO`.
-- Depois: o áudio do produtor é transcrito (`AUDIO_MODEL_TRANSCRICAO`) e tratado como texto, mostrando "Entendi: ...".
-- A IAra responde em áudio quando a mensagem recebida foi áudio, ou depois de "manda em áudio".
+- Com `AUDIO_ATIVO=false` (ou sem `AUDIO_API_KEY`), qualquer áudio recebido responde `AUDIO_AINDA_NAO`, os comandos de áudio também, e `BOAS_VINDAS`/`MENU` não oferecem áudio.
+- Com `AUDIO_ATIVO=true`: o áudio do produtor (até 60 s) é transcrito (`AUDIO_MODEL_TRANSCRICAO`, português) e tratado como texto, inclusive no agrupamento de mensagens. A IAra mostra `Entendi: "<transcrição>"` só quando a conversa está coletando dados (`coletando_safra` ou `perfil_tributario`). Transcrição vazia ou com erro: `AUDIO_NAO_ENTENDI`.
+- A IAra responde em áudio quando a mensagem recebida foi áudio (isso liga `conversa.responde_audio`), ou depois de "manda em áudio"; "só texto" desliga. Os comandos valem em qualquer estado.
+- Falha no TTS ou no envio do áudio: só texto, sem erro para o produtor.
 - O áudio é curto (até ~25 s): para a conta da safra, usa `montarResumoFalado`; para os demais textos, o próprio texto quando tiver até ~400 caracteres, senão só o texto.
 - Ordem: áudio primeiro, texto logo depois (os números sempre por escrito).
 - Textos fixos curtos (LIMITE, MANUTENCAO, FORA_ESCOPO) não precisam de áudio.

@@ -35,7 +35,7 @@ const IDENTIDADE = [/\b(voce|vc|tu) (e|eh|era) (uma? )?(pessoa|gente|humano|huma
 const PREVISAO = ['previsao de preco', 'previsao da safra', 'previsao de colheita', 'previsao da colheita', 'previsao', 'vai subir', 'vai cair', 'vai valer', 'quanto vai custar a saca', 'preco no mes que vem', 'preco mes que vem'];
 const CLIMA = ['clima', 'tempo', 'chuva', 'previsao do tempo', 'temperatura'];
 const PAINEL = ['painel', 'grafico', 'ver minha safra'];
-const AUDIO = ['manda em audio', 'responde em audio', 'so texto', 'sem audio'];
+const AUDIO = ['manda em audio', 'manda audio', 'responde em audio', 'responder em audio', 'quero audio', 'so texto', 'so por texto', 'sem audio', 'para de mandar audio'];
 const SAFRA = ['safra', 'fazer (a |minha )?conta', 'minha conta', 'conta da', 'custo', 'saca', 'sacas', 'colher', 'colheita', 'hectare', 'hectares', 'alqueire', 'alqueires', 'prejuizo', 'lucro', 'e se'];
 
 const CONFIRMA_FORTES = ['sim', 's', 'isso', 'certo', 'correto', 'ok', 'confirmo', 'exato', 'positivo', 'claro', 'pode'];
@@ -105,6 +105,8 @@ function rotear(texto, estado) {
   if (IDENTIDADE.some((re) => re.test(t))) return { intencao: 'identidade' };
   if (t === '3' || (t !== 'pessoa' ? tem(t, HUMANO.filter((h) => h !== 'pessoa')) : true)) return { intencao: 'humano' };
   if (INJECAO.some((re) => re.test(t))) return { intencao: 'injecao' };
+  // Comandos de áudio valem em qualquer estado, inclusive dentro de um fluxo
+  if (tem(t, AUDIO) && !/\d/.test(t)) return { intencao: 'audio' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
   if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
   // "1" seguido de outras linhas (mensagens agrupadas pelo debounce): escolhe a safra e o resto segue como resposta a ela

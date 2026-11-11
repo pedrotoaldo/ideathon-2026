@@ -36,6 +36,10 @@ async function registrarResposta({ message_id, numero, intencao, texto, usou_llm
   );
 }
 
+async function setRespondeAudio(numero, valor) {
+  await pool.query('UPDATE conversa SET responde_audio = $2 WHERE numero = $1', [numero, !!valor]);
+}
+
 // Pedido de atendimento humano (opção 3 do menu, NAO_SEI seguido de "3", alerta respondido com "sim")
 async function registrarEncaminhamento({ numero, motivo, contexto = null }) {
   await pool.query('INSERT INTO encaminhamento (numero, motivo, contexto) VALUES ($1,$2,$3)', [numero, motivo, contexto ? JSON.stringify(contexto) : null]);
@@ -59,4 +63,4 @@ async function apagarDados(numero) {
   }
 }
 
-module.exports = { apagarDados, pool, registrarMensagem, config, carregarConversa, salvarEstado, registrarResposta, registrarEncaminhamento };
+module.exports = { apagarDados, pool, registrarMensagem, config, carregarConversa, salvarEstado, registrarResposta, registrarEncaminhamento, setRespondeAudio };
