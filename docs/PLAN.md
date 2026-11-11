@@ -6,8 +6,8 @@ Regra: terminar e testar cada etapa antes de abrir a próxima. Sessão principal
 
 | Etapa | Entrega | Tempo-alvo |
 | --- | --- | --- |
-| 0 | Infra no ar + cálculo pronto no n8n | 1 h |
-| 1 | Fluxo base: recebe, filtra, deduplica, limita, responde, boas-vindas e menu | 1 h |
+| 0 | Infra no ar + cálculo testado | 1 h |
+| 1 | Fluxo base no bot (`bot/`): recebe, filtra, deduplica, limita, responde, boas-vindas e menu | 1 h |
 | 2 | Conta da safra ponta a ponta (só texto) | 2 h |
 | 3 | Reforma tributária + proteção contra a plateia | 1 h 30 |
 | 4 | Alerta de preço simulado | 30 min |
@@ -19,28 +19,31 @@ Real × simulado na demo:
 | --- | --- |
 | Conversa por texto (provedor de chat **provisório**, Gemini; a troca para OpenAI é só pelo `.env`), conta da safra, perfil tributário, checklist | Real |
 | Áudio: transcrição do produtor e voz da IAra (OpenAI) | Real, mas só na Etapa 5. Até lá, áudio recebe `AUDIO_AINDA_NAO` ("Por enquanto eu entendo só texto. Pode escrever?") |
-| Alerta de preço | Simulado: o pedido é real e fica salvo; a cotação é digitada pela equipe num disparo manual do n8n |
+| Alerta de preço | Simulado: o pedido é real e fica salvo; a cotação é digitada pela equipe no comando `node scripts/disparar-alerta.mjs <cultura> <preço>` |
 | Painel da safra | Slide ou o vídeo de demonstração (Plus 3 e 4) |
 
 ## Etapa 0 — Infra e cálculo
 - [x] Copiar `.env.example` para `.env` e preencher (`AUDIO_API_KEY` fica para a Etapa 5)
 - [x] `docker compose up -d` (Evolution API, Postgres, Redis)
 - [x] `psql "$DATABASE_URL" -f db/schema.sql` (só o Núcleo; `schema_plus.sql` fica para depois) (aplicado pelo container: `docker exec -i agrozap_postgres psql -U agrozap -d agrozap < db/schema.sql`)
-- [x] Criar instância na Evolution (`integration: WHATSAPP-BAILEYS`), ler o QR com o **chip dedicado da demo** e apontar o webhook (`MESSAGES_UPSERT`) para o n8n (conectada em 11/11/2026 por código de pareamento; webhook em `host.docker.internal`)
-- [ ] `npm test` verde e `npm run build:n8n` (feitos, 14/14); colar `n8n/code-nodes/calcular_safra.js` num Code node "Calcular safra"
+- [x] Criar instância na Evolution (`integration: WHATSAPP-BAILEYS`), ler o QR com o **chip dedicado da demo** e apontar o webhook (`MESSAGES_UPSERT`) para o bot em `host.docker.internal:<BOT_PORT>` (conectada em 11/11/2026 por código de pareamento; webhook em `host.docker.internal`)
+- [x] `npm test` verde (14/14)
 
-## Etapa 1 — Fluxo base no n8n
-- [ ] Webhook → normalizar payload (número, tipo, texto, id, fromMe, grupo)
+## Etapa 1 — Fluxo base no bot (serviço Node em `bot/`)
+O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e `--env-file`), não o n8n. Reaproveita `src/calc/safra.cjs` com `require`, os textos de `docs/CONVERSA.md` e os prompts de `prompts/`. Sobe com `npm run bot`; a Evolution chama `host.docker.internal:<BOT_PORT>`. O n8n é a Fase Plus 8.
+- [ ] Esqueleto: `bot/server.js` (responde 200 na hora e processa depois), `bot/textos.js`, `bot/db.js`, `bot/evolution.js`; `npm run bot`; webhook da instância apontando para o bot (path com sufixo aleatório do `.env`)
+- [ ] `scripts/simular-mensagem.mjs <numero> "<texto>"`: manda um payload `MESSAGES_UPSERT` falso ao bot e imprime a resposta (para os roteiros sem celular)
+- [ ] Normalizar payload (número, tipo, texto, id, fromMe, grupo)
 - [ ] Descartar `fromMe`, grupos, status e mídias que não sejam texto (`SO_TEXTO_AUDIO`); **áudio** responde `AUDIO_AINDA_NAO` até a Etapa 5
 - [ ] Idempotência pelo `message_id` em `mensagem`
 - [ ] Kill switch (`config.bot_ativo`) e limite por número (20 mensagens em 10 min)
 - [ ] Carregar ou criar `conversa`; primeiro contato → `BOAS_VINDAS` + `MENU`
 - [ ] Enviar via `POST /message/sendText/{instance}`
-- [ ] Teste: 2 celulares mandando "oi" ao mesmo tempo
+- [ ] Fila por número (mensagens do mesmo número processadas em sequência) e teste: 2 celulares mandando "oi" ao mesmo tempo
 
 ## Etapa 2 — Conta da safra
 - [ ] Roteador por regra (números do menu e palavras-chave de `docs/CONVERSA.md`); LLM só quando ambíguo
-- [ ] Extração com `prompts/extracao_safra.md` via `chat/completions` + `response_format: json_object` (Gemini por ora), validação do JSON e das faixas no n8n, pergunta um campo por vez
+- [ ] Extração com `prompts/extracao_safra.md` via `chat/completions` + `response_format: json_object` (Gemini por ora), validação do JSON e das faixas no bot, pergunta um campo por vez
 - [ ] Estados `coletando_safra` → `confirmando_safra` → `resultado_safra`; alqueire convertido para ha
 - [ ] Resposta com `RESULTADO_SAFRA`; "e se..." com `calcularESe`
 - [ ] Roteiro A de `docs/CONVERSA.md` e a parte em alqueire do Roteiro B (por texto, sem áudio)
@@ -56,7 +59,7 @@ Real × simulado na demo:
 
 ## Etapa 4 — Alerta simulado
 - [ ] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`
-- [ ] Workflow `agro-zap-alerta-demo` com **Manual Trigger** (ou formulário do n8n) com campos cultura e preço: busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → envia → marca `ativo: false` antes de enviar (aviso único)
+- [ ] `node scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`): busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → marca `ativo: false` antes de enviar (aviso único) → envia pela Evolution e põe a conversa em `aguardando_resposta_alerta`
 - [ ] Resposta "sim"/"não" ao alerta → `ALERTA_RESPOSTA_SIM` (cria `encaminhamento`) ou `ALERTA_RESPOSTA_NAO`
 - [ ] Roteiro E-simulado
 
@@ -72,7 +75,7 @@ Usa `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO` e `AUDIO_MODEL_
 - [ ] Ensaio com cronômetro seguindo `docs/DEMO_QR.md`
 - [ ] Teste rápido de carga: 20 a 30 mensagens de números diferentes
 - [ ] Gravar vídeo da demo funcionando, com o alerta chegando (plano B)
-- [ ] Exportar workflows para `n8n/workflows/`
+- [ ] Bot sobe do zero com `npm run bot` e o `.env` está completo (checklist da véspera em `docs/DEMO_QR.md`)
 - [ ] `revisor-guardrails` uma vez, sobre prompts, textos e uma amostra de respostas reais
 
 ## Subagentes no Núcleo

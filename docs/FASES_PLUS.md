@@ -7,12 +7,13 @@ O protótipo do Ideathon é o **Núcleo** (`docs/PLAN.md`). Tudo aqui ficou de f
 | Fase | O que é | Na demo do Ideathon | Esforço | Depende de |
 | --- | --- | --- | --- | --- |
 | Plus 1 | IAra responde em áudio | **Movida para o Núcleo, Etapa 5** (junto da transcrição, OpenAI). Nada a fazer aqui | — | — |
-| Plus 2 | Gatilho de preço real | Simulado por disparo manual no n8n | 1 h 30 | Núcleo |
+| Plus 2 | Gatilho de preço real | Simulado por `scripts/disparar-alerta.mjs` | 1 h 30 | Núcleo |
 | Plus 3 | Webapp: painel da demo + admin de cotação | Cortado (painel vira slide) | 1 h 30 | Plus 2 para o admin |
 | Plus 4 | Webapp: painel do produtor | Cortado (o vídeo de demonstração mostra a ideia) | 1 h | Plus 3 |
 | Plus 5 | Redis: fila, agrupamento de mensagens, limites e memória curta | Não precisa (Postgres dá conta) | 1 a 2 h | Núcleo |
 | Plus 6 | Extras: resumo, clima, apagar dados | Cortado | 1 h | Núcleo |
 | Plus 7 | Piloto: Cloud API oficial, RAG, cooperativa, templates | Citado no pitch como próximo passo | dias | Plus 2 e validação |
+| Plus 8 | Migrar a orquestração do bot (`bot/`) para o n8n | Não: o Núcleo roda no bot em Node | 3 a 4 h | Núcleo |
 
 ---
 
@@ -26,10 +27,10 @@ Mantida aqui só como referência técnica; os passos são os da Etapa 5 do `doc
 - Aceite: Roteiro F, passos 1 a 3.
 
 ## Plus 2 — Gatilho de preço real (SPEC F20 a F23, N12)
-No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a equipe dispara o aviso pelo n8n. Na Plus 2 ele vira automático:
+No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a equipe dispara o aviso com `node scripts/disparar-alerta.mjs <cultura> <preço>`. Na Plus 2 ele vira automático:
 - Tabelas `cotacao` e `gatilho_preco` (em `db/schema_plus.sql`).
 - Criar, listar e cancelar alertas por conversa (`GATILHO_CRIADO`, `LISTA_GATILHOS`, `GATILHO_CANCELADO`).
-- Workflow `agro-zap-gatilhos` (ARCHITECTURE seção 8b): webhook + Schedule de 1 min → última cotação → `avaliarGatilhos` → `UPDATE ... SET ativo = false ... RETURNING` **antes** de enviar (aviso único) → `ALERTA_PRECO`.
+- Gatilhos `agro-zap-gatilhos` (ARCHITECTURE seção 8b; rotina agendada no bot, ou workflow n8n se a Plus 8 for feita): webhook + Schedule de 1 min → última cotação → `avaliarGatilhos` → `UPDATE ... SET ativo = false ... RETURNING` **antes** de enviar (aviso único) → `ALERTA_PRECO`.
 - Resposta "sim" ao alerta cria `encaminhamento` para o comercial.
 - Fonte da cotação: manual pelo admin (Plus 3) ou tabela da cooperativa (Plus 7).
 - Aceite: Roteiro E.
@@ -53,10 +54,10 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 
 | Uso | Problema que resolve | Como |
 | --- | --- | --- |
-| Fila do n8n (queue mode) | Muitas mensagens ao mesmo tempo travando a instância principal | n8n em `EXECUTIONS_MODE=queue` com Redis + 1 ou mais workers |
+| Fila (queue) | Muitas mensagens ao mesmo tempo travando o processo único do bot | Fila no Redis com mais de um worker do bot (ou n8n em `EXECUTIONS_MODE=queue`, se a Plus 8 for feita) |
 | Agrupar mensagens seguidas (debounce) | Produtor manda 3 mensagens picadas ("plantei 10 ha" / "de soja" / "gastei 45 mil") e a IAra responde 3 vezes | Guardar as mensagens do número numa lista no Redis com TTL de ~8 s; responder só quando o produtor para de digitar, juntando tudo |
 | Limite por número | Contagem rápida sem consultar o Postgres a cada mensagem | `INCR` + `EXPIRE` por número e janela |
-| Memória curta da conversa | Contexto recente para o LLM sem montar histórico do banco | Nó "Redis Chat Memory" do n8n com TTL; o Postgres continua sendo a fonte de verdade |
+| Memória curta da conversa | Contexto recente para o LLM sem montar histórico do banco | Redis com TTL (no n8n: nó "Redis Chat Memory"); o Postgres continua sendo a fonte de verdade |
 | Trava por número | Duas mensagens do mesmo número processadas ao mesmo tempo | `SET numero NX PX 10000` como lock |
 
 **Regra:** o Redis é auxiliar e pode perder dados. Tudo que precisa durar (safra, perfil, alertas, consentimento, logs) continua no Postgres.
@@ -74,3 +75,9 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 - Cotação vinda da cooperativa parceira; cadastro do cooperado; painel do gestor por perfil tributário.
 - Lembretes do calendário da safra (seguro, contratos, Plano Safra) e boletim semanal ativo.
 - LGPD completa: termo versionado, retenção e exportação de dados.
+
+## Plus 8 — Migrar a orquestração para o n8n
+- O Núcleo roda no bot Node (`bot/`). Esta fase recria o fluxo no n8n, se a equipe preferir fluxos visuais.
+- O workflow principal `agro-zap-entrada` espelha o pipeline de `docs/ARCHITECTURE.md` seção 3, com um Code node "Calcular safra" colado de `n8n/code-nodes/calcular_safra.js` (`npm run build:n8n`).
+- Variáveis: `N8N_WEBHOOK_URL` no `.env`, webhook da instância apontando para o n8n. Exportar os workflows em `n8n/workflows/`.
+- Aceite: Roteiros A a D e E-simulado passam sem usar `bot/`.

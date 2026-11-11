@@ -1,5 +1,5 @@
 // Agro na Medida ZAP — cálculo determinístico da safra e regra de perfil tributário.
-// Sem dependências: este arquivo é colado no Code node do n8n (ver scripts/build-n8n.mjs).
+// Sem dependências: importado pelo bot (bot/) com require; também colável num Code node do n8n (Plus 8, scripts/build-n8n.mjs).
 // A IA nunca calcula: todo número mostrado ao produtor sai daqui.
 
 const HA_POR_ALQUEIRE_PAULISTA = 2.42;

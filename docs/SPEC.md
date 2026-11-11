@@ -26,7 +26,7 @@ Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integraçã
 
 | Fase | Requisitos |
 | --- | --- |
-| Núcleo | F01 a F13, F17, e F20 + F22 + F23 na versão **simulada** (pedido salvo em `conversa.dados.alerta`, disparo manual no n8n) |
+| Núcleo | F01 a F13, F17, e F20 + F22 + F23 na versão **simulada** (pedido salvo em `conversa.dados.alerta`, disparo manual com `node scripts/disparar-alerta.mjs <cultura> <preço>`) |
 | Núcleo, Etapa 5 (áudio, OpenAI, só depois do texto estável) | F02, F18 e F19. Até a Etapa 5, áudio recebido responde `AUDIO_AINDA_NAO` |
 | Plus 2 | F20 a F23 automáticos, F21 |
 | Plus 3 | F25, F26 |
@@ -74,7 +74,7 @@ Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integraçã
 | N03 | Idempotência | Processar cada `message.key.id` uma única vez |
 | N04 | Kill switch | Flag `bot_ativo` no banco; se falso, responde `MANUTENCAO` |
 | N05 | Ignorar grupos, status e mensagens do próprio bot | `fromMe = true` e `@g.us` descartados |
-| N06 | Concorrência | 50 conversas simultâneas sem perda (fila no n8n) |
+| N06 | Concorrência | 50 conversas simultâneas sem perda (fila por número no bot) |
 | N07 | Privacidade | Sem CPF/CNPJ/conta bancária; dados apagados até 7 dias após o evento |
 | N08 | Custo | Limite diário de gasto no provedor de IA configurado antes da demo |
 | N09 | Log | Toda resposta registrada com intenção, latência e versão do prompt |

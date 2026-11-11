@@ -1,5 +1,6 @@
 # Agro na Medida ZAP — infraestrutura da demo
-# O n8n NÃO está aqui: a equipe usa a instância própria. Para subir um n8n local, descomente o serviço no fim.
+# O bot do Núcleo (bot/) roda no host com `npm run bot`; a Evolution o chama por host.docker.internal.
+# O n8n é a Fase Plus 8: para subir um n8n local, descomente o serviço no fim.
 # Conferir as variáveis de ambiente da Evolution na documentação da versão usada antes de subir.
 
 services:
@@ -35,7 +36,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: evolution
     ports:
-      - "5432:5432"            # só rede interna; o n8n precisa alcançar o banco agrozap
+      - "5432:5432"            # só rede interna; o bot (no host) alcança o banco agrozap por localhost
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro

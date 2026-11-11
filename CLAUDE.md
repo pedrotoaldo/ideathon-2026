@@ -6,18 +6,18 @@
 **Escopo atual = Núcleo do protótipo** (`docs/PLAN.md`). O produtor manda texto (áudio só na Etapa 5 do PLAN) e a IAra responde:
 1. **Conta da safra:** custo por hectare, custo por saca, produtividade mínima, preço de equilíbrio e 3 cenários.
 2. **Reforma tributária:** perfil provável (LC 214/2025), explicação simples e checklist para o contador.
-3. **Alerta de preço simulado:** o produtor pede o aviso; na demo, a equipe dispara a cotação pelo n8n.
+3. **Alerta de preço simulado:** o produtor pede o aviso; na demo, a equipe dispara a cotação com `node scripts/disparar-alerta.mjs <cultura> <preço>`.
 
 Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao vivo. Robustez da demo é prioridade.
 
-**Fases Plus** (`docs/FASES_PLUS.md`): gatilho real, webapp, Redis, extras e piloto. **Não implemente nada das Fases Plus sem pedido explícito** ("implemente a Plus 2").
+**Fases Plus** (`docs/FASES_PLUS.md`): gatilho real, webapp, Redis, extras, piloto e migração da orquestração para o n8n. **Não implemente nada das Fases Plus sem pedido explícito** ("implemente a Plus 2").
 
 ## Leia antes de codar
 | Arquivo | Para quê |
 | --- | --- |
 | `docs/PLAN.md` | Etapas do Núcleo, com checkboxes; o que é real e o que é simulado |
 | `docs/SPEC.md` | Requisitos e critérios de aceite (coluna Fase: Núcleo ou Plus) |
-| `docs/ARCHITECTURE.md` | Stack, fluxos do n8n, banco, integrações |
+| `docs/ARCHITECTURE.md` | Stack, módulos do bot, banco, integrações |
 | `docs/CONVERSA.md` | Textos da IAra, menu, intenções, roteiros de teste |
 | `docs/DEMO_QR.md` | Runbook da demo ao vivo e proteção contra abuso |
 | `docs/FASES_PLUS.md` | O que ficou para depois, com passos e dependências |
@@ -43,18 +43,23 @@ Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao v
 - **Áudio** (transcrição e voz da IAra): OpenAI, `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO`, `AUDIO_MODEL_TTS`. Transcrição em `POST {AUDIO_BASE_URL}/audio/transcriptions`, voz em `POST {AUDIO_BASE_URL}/audio/speech`. **Só entra na Etapa 5 do PLAN**; até lá, áudio recebido responde "Por enquanto eu entendo só texto. Pode escrever?".
 
 ## Convenções
-- Código JS (Node 21+). `src/calc/safra.cjs` não tem dependências nem `import`/`export`, porque é colado no Code node do n8n. Depois de mudar, rode `npm run build:n8n`.
+- **O bot do Núcleo é um serviço Node em `bot/`** (http nativo + `pg`), não o n8n. O n8n é a Fase Plus 8. O bot importa `src/calc/safra.cjs` com `require`, usa os textos de `docs/CONVERSA.md` e os prompts de `prompts/`.
+- Código JS (Node 21+, CommonJS). `src/calc/safra.cjs` não tem dependências nem `import`/`export` (continua colável num Code node do n8n; `npm run build:n8n` é só da Plus 8).
 - Testes: `npm test` (node:test nativo).
 - Valores em reais com 2 casas; áreas convertidas para hectare (1 alqueire paulista = 2,42 ha).
 - O driver `pg` devolve `numeric` como string: converter com `Number()`.
 - O Redis do compose é só cache da Evolution API. Estado da conversa fica no Postgres. Uso do Redis pela IAra é a Plus 5.
 - Segredos só em `.env` (nunca commitar). Ver `.env.example`.
-- Workflows do n8n exportados em `n8n/workflows/*.json` depois de prontos.
+- **`bot/textos.js` e `docs/CONVERSA.md` andam juntos:** mudou um, muda o outro na mesma alteração.
+- A Evolution roda no Docker e chama o bot no host por `http://host.docker.internal:<BOT_PORT>/webhook/<sufixo>` (`BOT_WEBHOOK_URL` no `.env`).
 
 ## Comandos
 ```bash
 npm test                              # 14 testes: cálculo, perfil, alerta, resumo falado
-npm run build:n8n                     # gera o código do Code node
+npm run bot                           # sobe o bot (porta BOT_PORT, padrão 3000)
+node scripts/simular-mensagem.mjs <numero> "<texto>"   # testa roteiros sem celular
+node scripts/disparar-alerta.mjs <cultura> <preço>      # alerta simulado da demo
+npm run build:n8n                     # só Plus 8: código do Code node do n8n
 docker compose up -d                  # Evolution API + Postgres + Redis
 psql "$DATABASE_URL" -f db/schema.sql # tabelas do Núcleo (idempotente)
 ```

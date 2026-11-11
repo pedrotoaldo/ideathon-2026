@@ -217,9 +217,9 @@ Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gat
 
 **Roteiro E-simulado — Alerta de preço no Núcleo**
 1. Depois do Roteiro A (custo por saca R$ 75): "me avisa quando a soja passar de 95" → GATILHO_CRIADO citando o custo de R$ 75
-2. Disparo manual no n8n com soja R$ 92 → nenhum alerta
-3. Disparo manual com soja R$ 98 → ALERTA_PRECO uma única vez, com "deixa cerca de R$ 23" e "A decisão de vender é sua"
-4. Novo disparo com soja R$ 99 → nenhum alerta novo (aviso único)
+2. `node scripts/disparar-alerta.mjs soja 92` → nenhum alerta
+3. `node scripts/disparar-alerta.mjs soja 98` → ALERTA_PRECO uma única vez, com "deixa cerca de R$ 23" e "A decisão de vender é sua"
+4. `node scripts/disparar-alerta.mjs soja 99` → nenhum alerta novo (aviso único)
 5. "sim" → ALERTA_RESPOSTA_SIM e registro em `encaminhamento`
 6. "me avisa quando a soja passar de 5" → recusa por faixa e pede outro valor
 

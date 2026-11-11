@@ -10,7 +10,7 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 
 ## 2. Momento certo no pitch
 1. Demo guiada: um integrante manda um áudio para a IAra com a tela do celular espelhada (ou o vídeo gravado, se der problema). A IAra entende o áudio e responde com a conta da safra.
-2. Alerta ao vivo (simulado): o integrante pede "me avisa quando a soja passar de 95". Outro integrante dispara o workflow `agro-zap-alerta-demo` no n8n com soja a R$ 98. O alerta chega na hora, na frente da banca. Digam que a cotação foi lançada pela equipe: no piloto, ela vem da cooperativa.
+2. Alerta ao vivo (simulado): o integrante pede "me avisa quando a soja passar de 95". Outro integrante roda `node scripts/disparar-alerta.mjs soja 98` no terminal. O alerta chega na hora, na frente da banca. Digam que a cotação foi lançada pela equipe: no piloto, ela vem da cooperativa.
 3. No slide final, o QR fica fixo: "Teste agora". Mostrem o painel da safra como próximo passo (slide ou o vídeo de demonstração).
 3. Não abrir o QR no começo: a plateia se distrai e o volume chega todo de uma vez.
 
@@ -34,7 +34,7 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 - [ ] Base tributária revisada (ou, no mínimo, lida por alguém da equipe com o aviso de pendência)
 - [ ] Vídeo da demo gravado (incluindo o alerta de preço chegando)
 - [ ] Roteiro E-simulado passando
-- [ ] Quem vai disparar o alerta sabe abrir o workflow `agro-zap-alerta-demo` no n8n
+- [ ] Quem vai disparar o alerta sabe rodar `node scripts/disparar-alerta.mjs <cultura> <preço>`
 - [ ] Segundo chip conectado em outra instância
 - [ ] Servidor sem atualizações automáticas agendadas e sem modo de suspensão
 
@@ -42,7 +42,7 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 - [ ] `SELECT valor FROM config WHERE chave = 'bot_ativo';` → true
 - [ ] Mandar "oi", um áudio e o Roteiro A de dois celulares diferentes
 - [ ] Desativar os alertas de teste (`dados.alerta.ativo = false`) para o alerta ao vivo funcionar
-- [ ] Deixar o n8n aberto no workflow de alerta, no notebook de quem vai disparar
+- [ ] Deixar um terminal aberto na pasta do projeto, no notebook de quem vai disparar o alerta, com o comando pronto; conferir que o bot está de pé (`npm run bot`)
 - [ ] Conferir que o celular do chip está carregado e com internet
 - [ ] Limpar conversas de teste se quiser começar o painel zerado
 

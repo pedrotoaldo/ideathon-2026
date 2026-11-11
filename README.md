@@ -23,18 +23,19 @@ Não implemente nada de docs/FASES_PLUS.md.
 ## Estrutura
 ```
 CLAUDE.md                     regras, escopo (Núcleo × Plus) e subagentes
-docs/PLAN.md                  Núcleo: etapas 0 a 5, real × simulado
+docs/PLAN.md                  Núcleo: etapas 0 a 6, real × simulado
 docs/FASES_PLUS.md            Plus 1 a 7, com passos, dependências e o papel do Redis
 docs/SPEC.md                  requisitos e critérios de aceite, mapeados por fase
-docs/ARCHITECTURE.md          stack, workflows do n8n, alerta simulado, webapp (Plus), integrações
+docs/ARCHITECTURE.md          stack, módulos do bot, alerta simulado, webapp (Plus), integrações
 docs/CONVERSA.md              textos da IAra e roteiros de teste
 docs/DEMO_QR.md               runbook da demo ao vivo com QR code
 docs/referencias/             estudo de público e PDFs do Ideathon
 prompts/                      prompts do LLM (extração e tributário)
 content/                      base tributária (pendente de revisão por contador)
 src/calc/                     cálculo, perfil, alerta, resumo falado + testes
-scripts/build-n8n.mjs         gera o código do Code node do n8n
-n8n/                          código gerado e workflows exportados
+bot/                          bot do Núcleo: serviço Node (http nativo + pg)
+scripts/                      simular-mensagem.mjs, disparar-alerta.mjs (e build-n8n.mjs, Plus 8)
+n8n/                          reservado para a Plus 8 (Code node gerado e workflows)
 web/                          reservado para o webapp (Plus 3 e 4)
 db/schema.sql                 tabelas do Núcleo
 db/schema_plus.sql            tabelas das Fases Plus
@@ -45,6 +46,7 @@ docker-compose.yml            Evolution API + Postgres + Redis (+ webapp no prof
 ## Comandos
 ```bash
 npm test                 # 14 testes
-npm run build:n8n        # gera n8n/code-nodes/calcular_safra.js
+npm run bot              # sobe o bot (porta BOT_PORT)
+npm run build:n8n        # só Plus 8: gera n8n/code-nodes/calcular_safra.js
 docker compose up -d     # infra do Núcleo
 ```
