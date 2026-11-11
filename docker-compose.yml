@@ -1,0 +1,87 @@
+# Agro na Medida ZAP — infraestrutura da demo
+# O n8n NÃO está aqui: a equipe usa a instância própria. Para subir um n8n local, descomente o serviço no fim.
+# Conferir as variáveis de ambiente da Evolution na documentação da versão usada antes de subir.
+
+services:
+  evolution-api:
+    image: ${EVOLUTION_IMAGE:-evoapicloud/evolution-api:v2.3.7}
+    container_name: agrozap_evolution
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8080:8080"            # manter acessível só na rede interna
+    environment:
+      SERVER_URL: ${EVOLUTION_URL}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: agrozap
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_LOCAL_ENABLED: "false"
+      LOG_LEVEL: ERROR,WARN,INFO
+    volumes:
+      - evolution_instances:/evolution/instances
+
+  postgres:
+    image: postgres:16
+    container_name: agrozap_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: evolution
+    ports:
+      - "5432:5432"            # só rede interna; o n8n precisa alcançar o banco agrozap
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7
+    container_name: agrozap_redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  # Webapp (painel do produtor, painel da demo e admin). Sobe com: docker compose --profile web up -d
+  # O Dockerfile é criado na Plus 3 (docs/FASES_PLUS.md, subagente webapp-dev).
+  web:
+    profiles: ["web"]
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: agrozap_web
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/agrozap
+      ADMIN_SENHA: ${ADMIN_SENHA}
+      N8N_GATILHOS_WEBHOOK_URL: ${N8N_GATILHOS_WEBHOOK_URL}
+      N8N_GATILHOS_SEGREDO: ${N8N_GATILHOS_SEGREDO}
+      WEB_URL: ${WEB_URL}
+
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   restart: always
+  #   ports:
+  #     - "5678:5678"
+  #   environment:
+  #     GENERIC_TIMEZONE: America/Sao_Paulo
+  #     TZ: America/Sao_Paulo
+  #   volumes:
+  #     - n8n_data:/home/node/.n8n
+
+volumes:
+  evolution_instances:
+  postgres_data:
+  redis_data:
+  # n8n_data:

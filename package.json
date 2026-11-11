@@ -1,0 +1,11 @@
+{
+  "name": "agro-na-medida-zap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Assistente de WhatsApp do Agro na Medida (Ideathon Mandaguari 2026)",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.cjs\"",
+    "build:n8n": "node scripts/build-n8n.mjs"
+  },
+  "engines": { "node": ">=21" }
+}
