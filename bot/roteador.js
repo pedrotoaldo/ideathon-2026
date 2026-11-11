@@ -50,7 +50,7 @@ function rotear(texto, estado) {
   if (APAGAR.some((p) => t.includes(p))) return { intencao: 'apagar' };
   if (t === '3' || tem(t, HUMANO)) return { intencao: 'humano' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
-  if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo' };
+  if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
   if (t === '4' || tem(t, GATILHO)) return { intencao: 'gatilho' };
   if (t === '2' || tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
   if (tem(t, CLIMA)) return { intencao: 'clima' };

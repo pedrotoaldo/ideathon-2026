@@ -113,7 +113,8 @@ async function tratar(conversa, texto, deps) {
     }
   }
 
-  async function confirmar(t) {
+  async function confirmar(t, eSeNaConfirmacao) {
+    if (eSeNaConfirmacao) { say(T.ESE_ANTES_CONFIRMAR, 'safra'); return; } // continua em confirmando_safra
     if (ehConfirmacao(t)) {
       const calc = S.calcularSafra(dados.safra, S.CENARIOS_PADRAO);
       dados.ultimo_calculo = {
@@ -170,11 +171,14 @@ async function tratar(conversa, texto, deps) {
     out.estado = 'menu';
     delete dados.coleta;
     say(T.MENU, 'menu');
-  } else if (['apagar', 'humano', 'tributario', 'gatilho', 'clima', 'painel', 'audio', 'resumo'].includes(r.intencao)) {
+  } else if (r.intencao === 'apagar') {
+    out.acao = 'apagar'; // quem apaga o banco é o processar.js
+    say(T.APAGADO, 'apagar');
+  } else if (['humano', 'tributario', 'gatilho', 'clima', 'painel', 'audio', 'resumo'].includes(r.intencao)) {
     say(T.EM_BREVE, r.intencao); // entram nas Etapas 3 e 4 e nas Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);
-    else await confirmar(texto);
+    else await confirmar(texto, r.eSe);
   } else if (r.intencao === 'safra') {
     if (r.eSe) {
       await eSe(texto); // sem conta pronta, o próprio eSe responde SEM_CONTA

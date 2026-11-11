@@ -5,6 +5,7 @@ const T = require('./textos');
 const db = require('./db');
 const { enviarTexto } = require('./evolution');
 const { normalizar, mascarar } = require('./normalizar');
+const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
 const { extrair } = require('./extracao');
 
@@ -20,6 +21,12 @@ async function processar(evento) {
 
   if (m.fromMe || m.isGroup || m.isStatus || m.tipo === 'ignorar') {
     log(m, 'ignorada', t0, m.fromMe ? '(fromMe)' : m.isGroup ? '(grupo)' : m.isStatus ? '(status)' : '(tipo sem tratamento)');
+    return;
+  }
+
+  // Modo teste: fora da lista (BOT_SOMENTE_NUMEROS) não responde nem grava nada
+  if (!permitido(m.numero)) {
+    log(m, 'ignorada', t0, '(fora da lista de teste)');
     return;
   }
 
@@ -77,6 +84,14 @@ async function processar(evento) {
       await db.salvarEstado(m.numero, 'menu');
     } else {
       const r = await tratar(conversa, m.texto, { extrair });
+      if (r.acao === 'apagar') {
+        // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
+        intencao = 'apagar';
+        try { await enviarTexto(m.destino, r.respostas[0].texto); } catch (e) { console.error(`[envio] falhou: ${e.message}`); }
+        await db.apagarDados(m.numero);
+        log(m, intencao, t0);
+        return;
+      }
       for (const x of r.respostas) {
         intencao = x.intencao;
         await responder(x.texto, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });

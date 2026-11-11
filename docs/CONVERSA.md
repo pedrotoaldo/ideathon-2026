@@ -39,13 +39,19 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **PERGUNTA_CORRECAO** (resposta "não" na confirmação, ou correção que não foi entendida)
 > Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.
 
+**ESE_ANTES_CONFIRMAR** (o produtor pergunta "e se..." enquanto a IAra espera o "sim"; continua em confirmando_safra)
+> Primeiro me confirme os dados com 'sim' e logo depois eu simulo esse cenário.
+
+**APAGADO** (resposta a "apagar meus dados"; apaga as linhas do número em resposta, mensagem, encaminhamento e conversa)
+> Pronto, apaguei os dados desta conversa. Se quiser recomeçar, é só escrever "oi".
+
 **ESE_NAO_ENTENDI**
 > Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".
 
 **SEM_CONTA** ("e se" antes de existir uma conta pronta)
 > Antes, preciso da conta da safra. Escreva "1" para começar.
 
-**EM_BREVE** (temporário: intenções ainda não implementadas, como reforma tributária, alerta e "apagar meus dados"; some quando as Etapas 3 e 4 entrarem)
+**EM_BREVE** (temporário: intenções ainda não implementadas, como reforma tributária e alerta; some quando as Etapas 3 e 4 entrarem)
 > Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.
 
 **CONFIRMA_DADOS**

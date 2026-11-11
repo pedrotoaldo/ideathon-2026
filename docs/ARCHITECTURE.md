@@ -43,6 +43,7 @@ Módulos:
 | --- | --- |
 | `bot/server.js` | Servidor HTTP: `POST <path do BOT_WEBHOOK_URL>` (outros paths: 404), `GET /health` → `{"ok":true}`; entrega o evento à fila por número |
 | `bot/normalizar.js` | Extrai `numero` (remoteJid sem sufixo), `message_id`, `fromMe`, `isGroup`, `tipo` (texto, audio, outro), `texto`, `duracao_audio` |
+| `bot/acesso.js` | Modo teste: se `BOT_SOMENTE_NUMEROS` estiver no `.env`, o bot ignora (sem responder nem gravar) qualquer outro número. Números fictícios `5500...` do simulador sempre passam |
 | `bot/roteador.js` | Roteador por regra: números do menu e palavras-chave de `docs/CONVERSA.md` seção 2; devolve `ambiguo` quando nenhuma regra resolve |
 | `bot/cerebro.js` | Máquina de estados (seção 4), sem I/O: recebe o LLM por injeção e devolve estado, dados e respostas. Decide texto fixo, extração, cálculo ou redator tributário |
 | `bot/extracao.js` | Carrega `prompts/extracao_safra.md` (prompt e schema), chama o LLM e sanitiza o JSON (tipos, enums, números) |

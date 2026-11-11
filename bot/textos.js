@@ -35,6 +35,8 @@ const T = {
   FORA_DA_FAIXA: 'Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?',
   PERGUNTA_CORRECAO: 'Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.',
   ESE_NAO_ENTENDI: 'Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".',
+  ESE_ANTES_CONFIRMAR: "Primeiro me confirme os dados com 'sim' e logo depois eu simulo esse cenário.",
+  APAGADO: 'Pronto, apaguei os dados desta conversa. Se quiser recomeçar, é só escrever "oi".',
   SEM_CONTA: 'Antes, preciso da conta da safra. Escreva "1" para começar.',
 
   OFERTA_PROXIMO: 'Quer testar outro cenário ("e se o preço for 90?"), criar um alerta de preço ("me avisa quando passar de 95") ou entender a reforma tributária (responda 2)?',

@@ -55,4 +55,22 @@ async function registrarResposta({ message_id, numero, intencao, texto, usou_llm
   );
 }
 
-module.exports = { pool, registrarMensagem, config, contarMensagens, carregarConversa, salvarEstado, jaAvisouLimite, registrarResposta };
+// "Apagar meus dados": remove tudo do número, na ordem das dependências
+async function apagarDados(numero) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query('DELETE FROM resposta WHERE numero = $1', [numero]);
+    await c.query('DELETE FROM encaminhamento WHERE numero = $1', [numero]);
+    await c.query('DELETE FROM mensagem WHERE numero = $1', [numero]);
+    await c.query('DELETE FROM conversa WHERE numero = $1', [numero]);
+    await c.query('COMMIT');
+  } catch (e) {
+    await c.query('ROLLBACK');
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
+module.exports = { apagarDados, pool, registrarMensagem, config, contarMensagens, carregarConversa, salvarEstado, jaAvisouLimite, registrarResposta };

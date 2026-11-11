@@ -28,6 +28,7 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 
 ## 4. Checklist
 **Na véspera**
+- [ ] `BOT_SOMENTE_NUMEROS` vazio no `.env` (senão o bot ignora a plateia) e o bot reiniciado
 - [ ] Roteiros A, B, C e D passando (`qa-conversa`)
 - [ ] Teste de carga com 30 envios simultâneos
 - [ ] Limite de gasto do provedor de IA configurado

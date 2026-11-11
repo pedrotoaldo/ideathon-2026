@@ -162,3 +162,20 @@ test('LLM que repete a área já coletada não apaga o "alqueires" da confirmaç
   p = await passo(p.conv, 'uns 90 mil', llm({ custo_total: 90000, area_valor: 48.4, area_unidade: 'ha' }));
   assert.equal(p.conv.dados.safra.area_origem.valor, 20);
 });
+
+test('"e se" durante a confirmação: pede o sim e continua em confirmando_safra', async () => {
+  const base = { estado: 'confirmando_safra', dados: { safra: { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 } } };
+  const extrair = llm();
+  const p = await passo(base, 'e se a saca for 90?', extrair);
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Primeiro me confirme os dados com 'sim' e logo depois eu simulo esse cenário\./);
+  assert.equal(extrair.chamadas.length, 0);
+});
+
+test('"apagar meus dados": pede a ação de apagar e confirma, em qualquer estado', async () => {
+  for (const estado of ['menu', 'coletando_safra', 'resultado_safra']) {
+    const p = await passo({ estado, dados: { safra: {} } }, 'apagar meus dados', llm());
+    assert.equal(p.r.acao, 'apagar');
+    assert.match(p.texto, /apaguei os dados desta conversa/);
+  }
+});

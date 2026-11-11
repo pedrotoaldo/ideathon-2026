@@ -4,6 +4,7 @@
 const http = require('node:http');
 const { processar } = require('./processar');
 const { normalizar } = require('./normalizar');
+const { listaPermitida } = require('./acesso');
 
 const PORTA = Number(process.env.BOT_PORT) || 3000;
 const CAMINHO = (() => {
@@ -62,5 +63,7 @@ process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
 process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
 
 servidor.listen(PORTA, '0.0.0.0', () => {
+  const so = listaPermitida();
+  if (so.length) console.warn(`*** MODO TESTE: respondendo só a ${so.join(', ')}. Esvazie BOT_SOMENTE_NUMEROS no .env quando o MVP estiver funcional. ***`);
   console.log(`Bot no ar em http://0.0.0.0:${PORTA}  (health: /health)  webhook: ${CAMINHO}`);
 });

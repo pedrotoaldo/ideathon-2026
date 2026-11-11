@@ -72,6 +72,7 @@ Usa `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO` e `AUDIO_MODEL_
 - [ ] Restaurar `BOAS_VINDAS` e `MENU` em `docs/CONVERSA.md` para voltar a oferecer áudio
 
 ## Etapa 6 — Ensaio
+- [ ] **Esvaziar `BOT_SOMENTE_NUMEROS` no `.env`** (modo teste: hoje o bot só responde ao número de teste) e reiniciar o bot; conferir que um número qualquer recebe resposta
 - [ ] Ensaio com cronômetro seguindo `docs/DEMO_QR.md`
 - [ ] Teste rápido de carga: 20 a 30 mensagens de números diferentes
 - [ ] Gravar vídeo da demo funcionando, com o alerta chegando (plano B)
