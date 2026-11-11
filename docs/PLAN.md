@@ -70,6 +70,7 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Comando "resumo" (`montarResumo` em `safra.cjs`, com teste): mostra safra e/ou perfil e diz como completar o que falta
 - [x] `calcularCobertura` em `safra.cjs`, com testes, **sem ligação com o bot** (Plus 9)
 - [x] Plus 9, 10 e 11 descritas em `docs/FASES_PLUS.md`; Plus 7 ganhou a integração com app e CRM
+- [x] Correções do teste real de 11/11 (áudio pelo celular), todas com teste e no `npm run regressao` ("11/11 (1) a (3)"): conversa expira após 30 min sem mensagem (`bot/expiracao.js`, `config.conversa_expira_min`) e volta ao menu mantendo a última conta; saudação no meio do fluxo pergunta "Quer continuar a conta ou ver o menu?"; "40 hectares" dito com a pendência de unidade substitui o número pendente; sem cultura pergunta a cultura antes de confirmar; sanidade na confirmação (`avisosSanidade`, `config.limites_sanidade`); variações de "sim" (texto e transcrição) aceitas; "Entendi: ..." também na confirmação; transcrição do áudio gravada em `mensagem.texto`
 
 ## Etapa 4 — Alerta simulado
 - [x] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`

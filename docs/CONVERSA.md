@@ -32,6 +32,10 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 - custo_total: "Quanto vai gastar no total nessa safra, mais ou menos?"
 - produtividade_esperada: "Quantas sacas por hectare você espera colher?"
 - preco: "Qual preço da saca você quer usar na conta?"
+- cultura (só se faltar, antes de confirmar): "Qual é a cultura? Por exemplo: soja, milho ou trigo."
+
+**CONTINUAR_OU_MENU** (saudação no meio de um fluxo: "oi", "opa, e aí?"; o estado não muda)
+> Oi! Quer continuar a conta ou ver o menu? Escreva "continuar" ou "menu".
 
 **PERGUNTA_UNIDADE_AREA** (quando o produtor diz só o número da área)
 > Esses {valor} são hectares ou alqueires?
@@ -57,6 +61,14 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 
 **Aviso de faixa por cultura** (dentro do CONFIRMA_DADOS, no lugar de "Está certo?"; exige correção ou "sim, está certo")
 > Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo? Se estiver, responda "sim, está certo". Ou me corrija.
+
+**Aviso de sanidade** (também dentro do CONFIRMA_DADOS, junto ou no lugar do aviso de faixa; calculado com `avisosSanidade` de `safra.cjs`; limites iniciais em `config.limites_sanidade`; exige "sim, está certo")
+> Atenção: saca a R$ 20 é bem abaixo do comum (menos de R$ 30).
+> Atenção: custo de R$ 20.000 por hectare está fora do comum (o usual fica entre R$ 1.000 e R$ 15.000).
+> Atenção: o custo por saca (R$ 75) ficou mais que o dobro do preço da saca (R$ 20).
+> (várias frases juntas, terminando em "Está certo? Se estiver, responda "sim, está certo". Ou me corrija.")
+
+**Conversa parada**: depois de 30 min sem mensagem (`config.conversa_expira_min`) o fluxo em andamento é descartado e a próxima mensagem começa do menu; a última conta calculada, o perfil completo e o alerta ficam (para "e se", "resumo" e a resposta ao alerta). Só quem estava no meio de um fluxo e manda algo que nenhuma regra reconhece recebe o `MENU`.
 
 **ESE_NAO_ENTENDI**
 > Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".

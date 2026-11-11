@@ -15,7 +15,8 @@ const { responder: responderTributario } = require('./tributario');
 const { criarDebounce } = require('./debounce');
 const { enfileirar } = require('./fila');
 const { registrar } = require('./limite');
-const { pedeApagar } = require('./roteador');
+const { pedeApagar, rotear } = require('./roteador');
+const { expirou, reiniciarDados, EM_FLUXO } = require('./expiracao');
 
 const MAX_CARACTERES = 800;
 
@@ -163,6 +164,7 @@ async function processar(evento) {
         log(m, 'audio_nao_entendi', t0);
         return;
       }
+      db.setTextoMensagem(m.message_id, texto).catch(() => {}); // guarda a transcrição (ajuda a diagnosticar)
       grupo.adicionar(m.numero, { m: { ...m, texto, deAudio: true }, t0 });
     } else if (m.tipo === 'midia') {
       await db.carregarConversa(m.numero);
@@ -191,6 +193,21 @@ async function responderGrupo(numero, itens) {
   try {
     const conversa = await db.carregarConversa(m.numero);
 
+    // Conversa parada há mais de 30 min (config.conversa_expira_min): descarta o fluxo e volta ao menu, mantendo a última conta
+    if (expirou(conversa, await db.config('conversa_expira_min', 30))) {
+      const eraFluxo = EM_FLUXO.includes(conversa.estado);
+      conversa.dados = reiniciarDados(conversa.dados);
+      conversa.estado = 'menu';
+      await db.salvarEstado(m.numero, 'menu', conversa.dados);
+      if (eraFluxo && rotear(texto, 'menu').intencao === 'ambiguo') {
+        // o que o produtor mandou respondia a uma pergunta que já ficou para trás: recebe o menu
+        intencao = 'menu_expirada';
+        await responder(T.MENU, 'menu');
+        log(m, intencao, t0, extra);
+        return;
+      }
+    }
+
     if (conversa.estado === 'novo') {
       intencao = 'boas_vindas';
       await responder(T.BOAS_VINDAS, intencao);
@@ -198,7 +215,8 @@ async function responderGrupo(numero, itens) {
       await db.salvarEstado(m.numero, 'menu');
     } else {
       const faixasCultura = await db.config('faixas_cultura', undefined);
-      const r = await tratar(conversa, texto, { extrair, faixasCultura, tributario: responderTributario, audioAtivo: audioAtivo() });
+      const limitesSanidade = await db.config('limites_sanidade', undefined);
+      const r = await tratar(conversa, texto, { extrair, faixasCultura, limitesSanidade, tributario: responderTributario, audioAtivo: audioAtivo() });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
         intencao = 'apagar';
@@ -209,8 +227,8 @@ async function responderGrupo(numero, itens) {
         return;
       }
       if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
-      // Mostra a transcrição quando a conversa está coletando dados por voz
-      if (temAudio && ['coletando_safra', 'perfil_tributario'].includes(conversa.estado)) {
+      // Mostra a transcrição quando a conversa está coletando ou confirmando dados por voz
+      if (temAudio && ['coletando_safra', 'confirmando_safra', 'perfil_tributario'].includes(conversa.estado)) {
         await responder('Entendi: "' + texto.replace(/\n+/g, ' ').slice(0, 300) + '"', 'transcricao');
       }
       // Preferência de áudio: comando explícito, ou áudio recebido liga

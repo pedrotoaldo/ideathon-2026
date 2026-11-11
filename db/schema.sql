@@ -15,6 +15,10 @@ INSERT INTO config (chave, valor) VALUES
   ('cenarios', '{"desfavoravel_pct": -20, "favoravel_pct": 10}'),
   -- Faixa plausível de produtividade (sc/ha) por cultura: valores iniciais, validar com um técnico. Outras culturas usam só a faixa geral.
   ('faixas_cultura', '{"soja": {"produtividade": [20, 90]}, "milho": {"produtividade": [40, 200]}, "cafe": {"produtividade": [10, 80]}}'),
+  -- Sanidade na confirmação (valores iniciais, validar com um técnico)
+  ('limites_sanidade', '{"preco_min": 30, "custo_ha_min": 1000, "custo_ha_max": 15000, "custo_saca_x_preco": 2}'),
+  -- Minutos sem mensagem para a conversa expirar (volta ao menu, mantendo a última conta)
+  ('conversa_expira_min', '30'),
   ('versao_prompt', '"v1"'),
   ('versao_base_tributaria', '"v1-pendente-revisao"'),
   ('audio_resposta', '{"ativo": true, "max_caracteres": 400}'),

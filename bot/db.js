@@ -11,6 +11,10 @@ async function registrarMensagem(m) {
   return r.rowCount === 1;
 }
 
+async function setTextoMensagem(message_id, texto) {
+  await pool.query('UPDATE mensagem SET texto = $2 WHERE message_id = $1', [message_id, texto]);
+}
+
 async function config(chave, padrao) {
   const r = await pool.query('SELECT valor FROM config WHERE chave = $1', [chave]);
   return r.rowCount ? r.rows[0].valor : padrao;
@@ -63,4 +67,4 @@ async function apagarDados(numero) {
   }
 }
 
-module.exports = { apagarDados, pool, registrarMensagem, config, carregarConversa, salvarEstado, registrarResposta, registrarEncaminhamento, setRespondeAudio };
+module.exports = { setTextoMensagem, apagarDados, pool, registrarMensagem, config, carregarConversa, salvarEstado, registrarResposta, registrarEncaminhamento, setRespondeAudio };

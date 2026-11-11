@@ -41,7 +41,7 @@ const cenarios = [
       ['1', [/Vamos fazer a conta/]],
       ['10 hectares de soja, gastei 40 mil', [/sacas por hectare você espera/]],
       ['2', [/Qual preço da saca/]],
-      ['60', [/Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Está certo\?/]],
+      ['60', [/Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Atenção: o custo por saca \(R\$ 2\.000\) ficou mais que o dobro do preço da saca \(R\$ 60\)\. Está certo\?/]],
       ['sim', [/Atenção: 2 sacas por hectare/], [/Pela sua conta/]],
       ['sim, está certo', [/custo por saca é R\$ 2\.000/, /Esse resultado ficou bem fora do comum\. Vale conferir os números\./]],
     ],
@@ -242,6 +242,70 @@ const cenariosDebounce = [
   },
 ];
 
+// Conversa real de 11/11 (teste pelo celular com áudio): estado velho, correção ignorada, sanidade e "Isso." por áudio
+const envioRodar = (numero, r) => async (texto, deve, naoDeve = [], opcoes = {}) => {
+  const resp = await conversar(numero, texto, { limiteMs: JANELA + 8000, ...opcoes });
+  const todo = resp.map((x) => x.texto).join(' | ');
+  r.push({ ok: resp.length > 0 && deve.every((re) => re.test(todo)) && naoDeve.every((re) => !re.test(todo)), rotulo: `${opcoes.audio ? '[áudio] ' : ''}"${texto}"`, detalhe: todo || '(sem resposta)' });
+};
+const envelhecer = (numero, min) => pool.query("UPDATE conversa SET atualizado_em = now() - ($2 || ' minutes')::interval WHERE numero = $1", [numero, String(min)]);
+
+const cenarios1111 = [
+  {
+    nome: '11/11 (1): conversa parada há 31 min recebe o MENU e mantém a última conta; saudação no fluxo pergunta se continua',
+    numero: '5500900000015',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = envioRodar(numero, r);
+      await passo('oi', [/Oi!/]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo('10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100', [/Entendi/]);
+      await passo('sim', [/custo por saca é R\$ 75\./]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo('2 de soja', [/Esses 2 são hectares ou alqueires\?/]);
+      await passo('Opa! E aí?', [/Quer continuar a conta ou ver o menu\?/], [/Como posso ajudar/]);
+      await passo('continuar', [/Esses 2 são hectares ou alqueires\?/]);
+      await envelhecer(numero, 31); // parada desde "ontem"
+      await passo('Opa! E aí?', [/Como posso ajudar/], [/Quer continuar/, /hectares ou alqueires/]);
+      await passo('e se a saca for 70?', [/faltariam R\$ 3\.000/]); // a última conta ficou salva
+      await passo('resumo', [/Safra: 10 ha de soja, custo R\$ 45\.000/]);
+      return r;
+    },
+  },
+  {
+    nome: '11/11 (2): "40 hectares" por áudio substitui o "2" pendente; "Isso." por áudio confirma e mostra o Entendi',
+    numero: '5500900000016',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = envioRodar(numero, r);
+      await passo('oi', [/Oi!/]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo('2 de soja', [/Esses 2 são hectares ou alqueires\?/]);
+      await passo('São hectares. É... 40 hectares. É investir 40 mil.', [/Entendi: "São hectares/, /Quantas sacas por hectare/], [], { audio: true });
+      await passo('60', [/Qual preço da saca/]);
+      await passo('100', [/Entendi: 40 ha de soja, custo de R\$ 40\.000, 60 sacas\/ha e saca a R\$ 100/], [/Atenção/]);
+      await passo('Isso.', [/Entendi: "Isso\."/, /custo por saca é R\$ 16,67/, /sobram R\$ 200\.000/], [], { audio: true });
+      return r;
+    },
+  },
+  {
+    nome: '11/11 (3): sem cultura pergunta a cultura; saca abaixo de R$ 30 e custo por saca alto exigem "sim, está certo"',
+    numero: '5500900000017',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = envioRodar(numero, r);
+      await passo('oi', [/Oi!/]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo('10 hectares, gastei 45 mil, espero 60 sacas por hectare, saca a 20', [/Qual é a cultura\?/], [/Entendi: 10 ha/]);
+      await passo('soja', [/Entendi: 10 ha de soja, custo de R\$ 45\.000, 60 sacas\/ha e saca a R\$ 20\./, /saca a R\$ 20 é bem abaixo do comum/, /custo por saca \(R\$ 75\) ficou mais que o dobro do preço/, /sim, está certo/]);
+      await passo('sim', [/saca a R\$ 20 é bem abaixo do comum/], [/sobram|faltam/]);
+      await passo('Isso.', [/sim, está certo/], [/sobram|faltam/], { audio: true });
+      await passo('Sim, está certo.', [/custo por saca é R\$ 75\./]);
+      return r;
+    },
+  },
+];
+
 let falhas = 0;
 const falhar = (linhas, msg) => { falhas++; linhas.push('    ✖ ' + msg); };
 
@@ -283,7 +347,7 @@ async function rodarCenario(c) {
 }
 
 // Cenários em paralelo (números diferentes), para o debounce não alongar a rodada
-const saidas = await Promise.all([...cenarios, ...cenariosAudio, ...cenariosDebounce].map(rodarCenario));
+const saidas = await Promise.all([...cenarios, ...cenarios1111, ...cenariosAudio, ...cenariosDebounce].map(rodarCenario));
 for (const linhas of saidas) console.log(linhas.join('\n'));
 
 await fechar();

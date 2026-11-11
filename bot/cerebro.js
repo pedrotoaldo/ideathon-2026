@@ -82,6 +82,20 @@ function lerCultura(t) {
   return CULTURAS.find((c) => new RegExp('(^| )' + c + '( |$)').test(n)) || null;
 }
 
+// "40 hectares", "20 alqueires": área com unidade explícita na própria mensagem
+const AREA_EXPLICITA = /(^|[^\d])\d+(?:[.,]\d+)* ?(ha|hectares?|alqueires?)(?![a-z])/;
+const areaExplicita = (t) => AREA_EXPLICITA.test(normalizarTexto(t));
+
+// Resposta à pergunta da cultura: cultura conhecida, ou uma palavra só (sem número)
+function lerCulturaResposta(t) {
+  if (/[0-9]/.test(t)) return null;
+  const c = lerCultura(t);
+  if (c) return NOME_CULTURA[c] || c;
+  const n = normalizarTexto(t);
+  if (/^[a-z]{3,20}$/.test(n) && !ehNegacao(t) && !ehConfirmacao(t) && !['sei', 'nao', 'menu', 'continuar'].includes(n)) return n;
+  return null;
+}
+
 const pareceDuvida = (t) => /[?]/.test(t) || normalizarTexto(t).split(' ').length >= 6;
 
 async function tratar(conversa, texto, deps) {
@@ -144,9 +158,17 @@ async function tratar(conversa, texto, deps) {
       if (faltam.length) {
         perguntar(faltam[0]);
         out.estado = 'coletando_safra';
+      } else if (!novo.cultura) {
+        perguntar('cultura'); // sem cultura não confirma: a faixa e o alerta dependem dela
+        out.estado = 'coletando_safra';
       } else if (mudou || !jaConfirmando) {
-        // Produtividade fora do comum para a cultura: destaca e exige correção ou "sim, está certo"
-        const aviso = S.avisoFaixaCultura(novo, faixasCultura);
+        // Produtividade fora do comum para a cultura e números estranhos (preço, custo por hectare, custo por saca):
+        // destaca tudo e exige correção ou "sim, está certo"
+        const avisos = [];
+        const faixa = S.avisoFaixaCultura(novo, faixasCultura);
+        if (faixa) avisos.push(faixa.replace(/ Está certo[?]$/, ''));
+        avisos.push(...S.avisosSanidade(novo, deps.limitesSanidade));
+        const aviso = avisos.length ? avisos.join(' ') + ' Está certo?' : null;
         dados.coleta = aviso ? { alerta_faixa: aviso } : {};
         say(S.montarConfirmacao(novo, aviso), 'safra');
         out.estado = 'confirmando_safra';
@@ -183,7 +205,20 @@ async function tratar(conversa, texto, deps) {
 
   async function coletar(t) {
     const coleta = (dados.coleta = dados.coleta || {});
-    if (coleta.pendente_area != null) return resolverUnidadeArea(t);
+    if (coleta.pendente_area != null) {
+      if (!areaExplicita(t)) return resolverUnidadeArea(t);
+      delete coleta.pendente_area; // "40 hectares" dito agora substitui o número pendente; o resto da mensagem segue abaixo
+    }
+
+    // Pergunta da cultura pendente
+    if (coleta.campo_pedido === 'cultura') {
+      const c = lerCulturaResposta(t);
+      if (c) {
+        dados.safra = { ...(dados.safra || {}), cultura: c };
+        aplicar(semDados());
+        return;
+      }
+    }
 
     // Hipótese pendente ("60 são as sacas por hectare e 100 o preço da saca?"): "sim" aplica todas
     if (coleta.hipotese) {
@@ -250,7 +285,10 @@ async function tratar(conversa, texto, deps) {
       return;
     }
     if (ehNegacao(t)) { say(T.PERGUNTA_CORRECAO, 'safra'); return; }
-    if (dados.coleta && dados.coleta.pendente_area != null) return resolverUnidadeArea(t);
+    if (dados.coleta && dados.coleta.pendente_area != null) {
+      if (!areaExplicita(t)) return resolverUnidadeArea(t);
+      delete dados.coleta.pendente_area;
+    }
     if (numeroSolto(t) != null) { say(T.NUMERO_SOLTO, 'safra'); return; } // correção sem dizer qual campo
     const ext = await chamarLlm(t, null);
     const mudou = aplicar(ext, { jaConfirmando: true });
@@ -417,12 +455,31 @@ async function tratar(conversa, texto, deps) {
     out.estado = 'menu';
   }
 
+  // Repete a pergunta pendente do fluxo atual (depois de "continuar")
+  function repetirPergunta() {
+    const e = conversa.estado;
+    const c = dados.coleta || {};
+    if (e === 'confirmando_safra') say(S.montarConfirmacao(dados.safra || {}, c.alerta_faixa), 'safra');
+    else if (e === 'perfil_tributario') say(PERGUNTA_PERFIL[(dados.perfil && dados.perfil.etapa) || 'tipo'], 'tributario');
+    else if (e === 'criando_alerta') say(T.PEDE_GATILHO, 'gatilho');
+    else if (c.pendente_area != null) say(T.PERGUNTA_UNIDADE_AREA.replace('{valor}', S.formatarDecimal(c.pendente_area)), 'safra');
+    else {
+      const falta = c.campo_pedido || S.camposFaltantes(dados.safra || {})[0];
+      if (falta && T.PERGUNTA_CAMPO[falta]) say(T.PERGUNTA_CAMPO[falta], 'safra');
+      else say(T.PEDE_SAFRA, 'safra');
+    }
+  }
+
   const r = rotear(texto, conversa.estado);
 
   if (r.intencao === 'menu') {
     out.estado = 'menu';
     delete dados.coleta;
     say(T.MENU, 'menu');
+  } else if (r.intencao === 'saudacao_fluxo') {
+    say(T.CONTINUAR_OU_MENU, 'menu'); // o estado e os dados ficam como estavam
+  } else if (r.intencao === 'continuar') {
+    repetirPergunta();
   } else if (r.intencao === 'apagar') {
     out.acao = 'apagar'; // quem apaga o banco é o processar.js
     say(T.APAGADO, 'apagar');

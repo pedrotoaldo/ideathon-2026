@@ -39,26 +39,34 @@ const PAINEL = ['painel', 'grafico', 'ver minha safra'];
 const AUDIO = ['manda em audio', 'manda audio', 'responde em audio', 'responder em audio', 'quero audio', 'so texto', 'so por texto', 'sem audio', 'para de mandar audio'];
 const SAFRA = ['safra', 'fazer (a |minha )?conta', 'minha conta', 'conta da', 'custo', 'saca', 'sacas', 'colher', 'colheita', 'hectare', 'hectares', 'alqueire', 'alqueires', 'prejuizo', 'lucro', 'e se'];
 
-const CONFIRMA_FORTES = ['sim', 's', 'isso', 'certo', 'correto', 'ok', 'confirmo', 'exato', 'positivo', 'claro', 'pode'];
-const CONFIRMA_FRACAS = ['mesmo', 'ser', 'esta', 'ta', 'ai', 'tudo', 'e'];
+const CONFIRMA_FORTES = ['sim', 's', 'isso', 'certo', 'correto', 'ok', 'confirmo', 'exato', 'exatamente', 'positivo', 'claro', 'pode', 'certinho', 'perfeito', 'beleza', 'blz', 'combinado', 'fechado', 'aham', 'uhum', 'afirmativo', 'yes'];
+const CONFIRMA_FRACAS = ['mesmo', 'ser', 'esta', 'ta', 'ai', 'tudo', 'e', 'sim', 'faz', 'fazer', 'a', 'conta', 'calcula', 'calcular', 'vai', 'manda', 'segue', 'seguir', 'por', 'favor', 'obrigado', 'obrigada', 'ne', 'ta bom', 'bom'];
 const NEGA = ['nao', 'n', 'errado', 'negativo', 'nao esta certo', 'ta errado', 'esta errado'];
 
+// Letras repetidas ("siiim", "simmm") voltam a uma só; vale para confirmações curtas, em texto ou transcrição de áudio
+const semAlongar = (t) => t.replace(/(\p{L})\1{2,}/gu, '$1');
+
 function ehConfirmacao(texto) {
-  const t = normalizarTexto(texto);
+  const t = semAlongar(normalizarTexto(texto));
   const palavras = t.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-  if (!palavras.length || palavras.length > 5) return false;
+  if (!palavras.length || palavras.length > 6) return false;
   return palavras.some((p) => CONFIRMA_FORTES.includes(p)) && palavras.every((p) => CONFIRMA_FORTES.includes(p) || CONFIRMA_FRACAS.includes(p));
 }
 
 function ehNegacao(texto) {
-  return NEGA.includes(normalizarTexto(texto));
+  return NEGA.includes(semAlongar(normalizarTexto(texto)));
 }
 
 // "sim, está certo": confirmação explícita (usada quando a IAra avisou que um valor está fora do comum)
 function ehConfirmacaoExplicita(texto) {
   if (!ehConfirmacao(texto)) return false;
-  return normalizarTexto(texto).split(/[^\p{L}\p{N}]+/u).some((p) => ['certo', 'correto', 'confirmo', 'exato', 'mesmo'].includes(p));
+  return semAlongar(normalizarTexto(texto)).split(/[^\p{L}\p{N}]+/u).some((p) => ['certo', 'certinho', 'correto', 'confirmo', 'exato', 'exatamente', 'mesmo'].includes(p));
 }
+
+// Saudação curta ("oi", "opa, e aí?", "bom dia, tudo bem"): no meio de um fluxo a IAra pergunta se continua ou vai ao menu
+const SAUDACAO = /^(oi+|ola|opa|eae|oie|hey|salve|e ai|bom dia|boa tarde|boa noite)( (tudo bem|tudo bom|tudo|e ai|td bem|pessoal|pessoal tudo bem))*$/;
+const CONTINUAR = ['continuar', 'continua', 'continuar a conta', 'quero continuar', 'seguir', 'pode continuar', 'vamos continuar', 'continuo', 'continuar conta', 'continuar a coleta'];
+const ehSaudacao = (t) => SAUDACAO.test(semAlongar(t));
 
 const MULTIPLICADORES = { mil: 1e3, k: 1e3, milhao: 1e6, milhoes: 1e6 };
 
@@ -101,7 +109,9 @@ function numeroSolto(texto) {
 // intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | alertas | clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
   const t = normalizarTexto(texto);
-  if (MENU.includes(t)) return { intencao: 'menu' };
+  const emFluxo = ESTADOS_DE_FLUXO.includes(estado);
+  if (emFluxo && ehSaudacao(t)) return { intencao: 'saudacao_fluxo' };
+  if (MENU.includes(t) || ehSaudacao(t)) return { intencao: 'menu' };
   if (APAGAR.some((p) => t.includes(p))) return { intencao: 'apagar' };
   if (IDENTIDADE.some((re) => re.test(t))) return { intencao: 'identidade' };
   if (t === '3' || (t !== 'pessoa' ? tem(t, HUMANO.filter((h) => h !== 'pessoa')) : true)) return { intencao: 'humano' };
@@ -109,7 +119,8 @@ function rotear(texto, estado) {
   // Comandos de áudio valem em qualquer estado, inclusive dentro de um fluxo
   if (tem(t, AUDIO) && !/\d/.test(t)) return { intencao: 'audio' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
-  if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
+  if (emFluxo && CONTINUAR.includes(semAlongar(t))) return { intencao: 'continuar' };
+  if (emFluxo) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
   // "1" seguido de outras linhas (mensagens agrupadas pelo debounce): escolhe a safra e o resto segue como resposta a ela
   const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (linhas.length > 1 && normalizarTexto(linhas[0]) === '1') return { intencao: 'safra', eSe: false, soPedido: false, resto: linhas.slice(1).join('\n') };
@@ -134,4 +145,4 @@ function pedeApagar(texto) {
   return APAGAR.some((p) => t.includes(p));
 }
 
-module.exports = { pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };
+module.exports = { ehSaudacao, pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

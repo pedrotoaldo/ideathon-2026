@@ -241,3 +241,19 @@ test('calcularCobertura: sem venda fixada e entradas inválidas', () => {
   assert.throws(() => s.calcularCobertura({ custo_total: 100, sacas_fixadas: -1, preco_fixado: 1, producao_sacas: 1 }));
   assert.throws(() => s.calcularCobertura({ custo_total: 100, sacas_fixadas: 1, preco_fixado: 1, producao_sacas: NaN }));
 });
+
+test('avisosSanidade: números normais não geram aviso', () => {
+  assert.deepEqual(s.avisosSanidade({ area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 }), []);
+  assert.deepEqual(s.avisosSanidade({ area_ha: 40, custo_total: 40000, produtividade: 60, preco: 100 }), []); // R$ 1.000/ha, no limite
+});
+
+test('avisosSanidade: preço abaixo de R$ 30, custo por hectare fora da faixa e custo por saca acima de 2x o preço', () => {
+  const a = s.avisosSanidade({ area_ha: 2, custo_total: 40000, produtividade: 10, preco: 10 });
+  assert.equal(a.length, 3);
+  assert.match(a[0], /saca a R\$ 10 é bem abaixo do comum/);
+  assert.match(a[1], /R\$ 20\.000 por hectare.*entre R\$ 1\.000 e R\$ 15\.000/);
+  assert.match(a[2], /custo por saca \(R\$ 2\.000\) ficou mais que o dobro do preço da saca \(R\$ 10\)/);
+  assert.equal(s.avisosSanidade({ area_ha: 100, custo_total: 50000, produtividade: 60, preco: 100 }).length, 1); // R$ 500/ha
+  assert.deepEqual(s.avisosSanidade({ area_ha: 10 }), []); // dados incompletos: sem aviso
+  assert.equal(s.avisosSanidade({ area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 }, { preco_min: 150 }).length, 1); // limite vem da config
+});

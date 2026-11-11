@@ -275,7 +275,7 @@ test('REGRESSÃO celular: 2 sc/ha para soja destaca o aviso e exige "sim, está 
   assert.match(p.texto, /Qual preço da saca/);
   p = await passo(p.conv, '60', extrair);
   assert.equal(p.r.estado, 'confirmando_safra');
-  assert.match(p.texto, /Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Está certo\?/);
+  assert.match(p.texto, /Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Atenção: o custo por saca \(R\$ 2\.000\) ficou mais que o dobro.* Está certo\?/);
   p = await passo(p.conv, 'sim', extrair); // "sim" simples não basta
   assert.equal(p.r.estado, 'confirmando_safra');
   assert.match(p.texto, /Atenção: 2 sacas por hectare/);
@@ -325,4 +325,69 @@ test('número solto: parser', () => {
   assert.equal(numeroSolto('60 cerca de 100'), null);
   assert.deepEqual(contarNumeros('60 cerca de 100'), [60, 100]);
   assert.deepEqual(contarNumeros('saca de 60 kg a 100 reais, gastei 45 mil'), [100, 45000]);
+});
+
+// ---------- Conversa real de 11/11 (teste pelo celular com áudio) ----------
+const CONF = { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 };
+
+test('REGRESSÃO 11/11 (1): saudação no meio do fluxo pergunta se continua; "continuar" repete a pergunta, "menu" sai', async () => {
+  const extrair = llm();
+  const base = { estado: 'coletando_safra', dados: { safra: {}, coleta: { pendente_area: 2 } } };
+  let p = await passo(base, 'Opa! E aí?', extrair);
+  assert.match(p.texto, /Quer continuar a conta ou ver o menu\?/);
+  assert.equal(p.r.estado, 'coletando_safra');
+  assert.equal(p.r.dados.coleta.pendente_area, 2); // nada foi tomado como resposta
+  assert.equal(extrair.chamadas.length, 0);
+  p = await passo(p.conv, 'continuar', extrair);
+  assert.match(p.texto, /Esses 2 são hectares ou alqueires\?/);
+  p = await passo(p.conv, 'oi', extrair);
+  p = await passo(p.conv, 'menu', extrair);
+  assert.equal(p.r.estado, 'menu');
+  assert.match((await passo({ estado: 'menu', dados: {} }, 'opa e aí', extrair)).texto, /Como posso ajudar/); // fora do fluxo: menu
+});
+
+test('REGRESSÃO 11/11 (2): "40 hectares" dito com a pendência "2 → hectares ou alqueires?" substitui o 2 e o resto da mensagem segue', async () => {
+  const base = { estado: 'coletando_safra', dados: { safra: { cultura: 'soja' }, coleta: { pendente_area: 2 } } };
+  const extrair = llm({ area_valor: 40, area_unidade: 'ha', custo_total: 40000 });
+  const p = await passo(base, 'São hectares. É... 40 hectares. É investir 40 mil.', extrair);
+  assert.equal(p.r.dados.safra.area_ha, 40);
+  assert.equal(p.r.dados.safra.custo_total, 40000);
+  assert.equal(p.r.dados.coleta.pendente_area, undefined);
+  assert.match(p.texto, /Quantas sacas por hectare/);
+  // só a unidade ("hectares") continua usando o número pendente
+  const q = await passo(base, 'São hectares.', llm());
+  assert.equal(q.r.dados.safra.area_ha, 2);
+});
+
+test('REGRESSÃO 11/11 (3): sem cultura pergunta a cultura antes de confirmar; números estranhos exigem "sim, está certo"', async () => {
+  const sem = { estado: 'coletando_safra', dados: { safra: { area_ha: 10, custo_total: 45000, produtividade: 60 }, coleta: { campo_pedido: 'preco' } } };
+  let p = await passo(sem, '20', llm());
+  assert.match(p.texto, /Qual é a cultura\?/);
+  assert.equal(p.r.estado, 'coletando_safra');
+  p = await passo(p.conv, 'soja', llm());
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Atenção: saca a R\$ 20 é bem abaixo do comum \(menos de R\$ 30\)\./);
+  assert.match(p.texto, /custo por saca \(R\$ 75\) ficou mais que o dobro do preço da saca \(R\$ 20\)/);
+  p = await passo(p.conv, 'Isso.', llm()); // "isso" não basta nesses casos
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Atenção: saca a R\$ 20/);
+  p = await passo(p.conv, 'Sim, está certo.', llm());
+  assert.equal(p.r.estado, 'resultado_safra');
+});
+
+test('REGRESSÃO 11/11 (3): custo por hectare fora de R$ 1.000 a R$ 15.000 é destacado; limites vêm da config', async () => {
+  const base = { estado: 'coletando_safra', dados: { safra: { cultura: 'soja', area_ha: 2, produtividade: 60, preco: 100 }, coleta: { campo_pedido: 'custo_total' } } };
+  const p = await passo(base, '40 mil', llm());
+  assert.match(p.texto, /custo de R\$ 20\.000 por hectare está fora do comum/);
+  const q = await tratar(base, '40 mil', { extrair: llm(), limitesSanidade: { custo_ha_max: 25000 } });
+  assert.doesNotMatch(q.respostas.map((x) => x.texto).join(' '), /por hectare está fora do comum/);
+});
+
+test('REGRESSÃO 11/11 (4): variações de "sim" por texto ou transcrição de áudio confirmam', async () => {
+  for (const t of ['Isso.', 'Sim.', 'Tá certo.', 'Pode ser.', 'SIM!', 'siiim', 'Isso mesmo', 'É isso', 'Sim, sim.', 'Tá certo, pode fazer a conta', 'Aham', 'Beleza.']) {
+    assert.equal(ehConfirmacao(t), true, t);
+    const p = await passo({ estado: 'confirmando_safra', dados: { safra: { ...CONF }, coleta: {} } }, t, llm());
+    assert.equal(p.r.estado, 'resultado_safra', t);
+  }
+  for (const t of ['Não.', 'Isso não', 'está errado', 'quarenta mil']) assert.equal(ehConfirmacao(t), false, t);
 });

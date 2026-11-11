@@ -181,6 +181,24 @@ function avisoFaixaCultura(d, faixas = FAIXAS_CULTURA_PADRAO) {
   return null;
 }
 
+// Sanidade dos números na confirmação (antes de calcular): valores iniciais, ajustáveis em config.limites_sanidade.
+// Devolve frases de atenção; quem chama exige "sim, está certo" quando há alguma.
+const LIMITES_SANIDADE_PADRAO = { preco_min: 30, custo_ha_min: 1000, custo_ha_max: 15000, custo_saca_x_preco: 2 };
+function avisosSanidade(d, limites) {
+  if (camposFaltantes(d).length) return [];
+  const l = { ...LIMITES_SANIDADE_PADRAO, ...(limites || {}) };
+  const c = calcularSafra(d);
+  const avisos = [];
+  if (d.preco < l.preco_min) avisos.push('Atenção: saca a ' + formatarReais(d.preco) + ' é bem abaixo do comum (menos de ' + formatarReais(l.preco_min) + ').');
+  if (c.custo_ha < l.custo_ha_min || c.custo_ha > l.custo_ha_max) {
+    avisos.push('Atenção: custo de ' + formatarReais(c.custo_ha) + ' por hectare está fora do comum (o usual fica entre ' + formatarReais(l.custo_ha_min) + ' e ' + formatarReais(l.custo_ha_max) + ').');
+  }
+  if (c.preco_equilibrio > l.custo_saca_x_preco * d.preco) {
+    avisos.push('Atenção: o custo por saca (' + formatarReais(c.preco_equilibrio) + ') ficou mais que o dobro do preço da saca (' + formatarReais(d.preco) + ').');
+  }
+  return avisos;
+}
+
 // Confirmação dos dados coletados (CONFIRMA_DADOS): só repete o que o produtor disse, com área em ha e alqueire original.
 // Com aviso de faixa, exige correção ou um "sim, está certo" explícito.
 function montarConfirmacao(d, aviso) {
@@ -346,7 +364,7 @@ const API = {
   HA_POR_ALQUEIRE_PAULISTA, CENARIOS_PADRAO, FAIXAS,
   round2, converterAreaParaHa, converterProdutividadeParaScHa, mesclarExtracao,
   camposFaltantes, camposForaDaFaixa, calcularSafra, calcularESe,
-  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao, avisoFaixaCultura, normalizarCultura, FAIXAS_CULTURA_PADRAO,
+  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao, avisoFaixaCultura, avisosSanidade, LIMITES_SANIDADE_PADRAO, normalizarCultura, FAIXAS_CULTURA_PADRAO,
   perfilProvavel, montarResumo, calcularCobertura, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
 };
 
