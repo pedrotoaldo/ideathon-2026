@@ -43,9 +43,11 @@ Módulos:
 | --- | --- |
 | `bot/server.js` | Servidor HTTP: `POST <path do BOT_WEBHOOK_URL>` (outros paths: 404), `GET /health` → `{"ok":true}`; entrega o evento à fila por número |
 | `bot/normalizar.js` | Extrai `numero` (remoteJid sem sufixo), `message_id`, `fromMe`, `isGroup`, `tipo` (texto, audio, outro), `texto`, `duracao_audio` |
-| `bot/cerebro.js` | Máquina de estados (seção 4): decide texto fixo, extração, cálculo ou redator tributário |
+| `bot/roteador.js` | Roteador por regra: números do menu e palavras-chave de `docs/CONVERSA.md` seção 2; devolve `ambiguo` quando nenhuma regra resolve |
+| `bot/cerebro.js` | Máquina de estados (seção 4), sem I/O: recebe o LLM por injeção e devolve estado, dados e respostas. Decide texto fixo, extração, cálculo ou redator tributário |
+| `bot/extracao.js` | Carrega `prompts/extracao_safra.md` (prompt e schema), chama o LLM e sanitiza o JSON (tipos, enums, números) |
 | `bot/textos.js` | Textos fixos, copiados literalmente de `docs/CONVERSA.md` |
-| `bot/llm.js` | `POST {LLM_BASE_URL}/chat/completions` (extração e redator tributário) |
+| `bot/llm.js` | `POST {LLM_BASE_URL}/chat/completions` (`response_format: json_object`), timeout de 12 s (`LLM_TIMEOUT_MS`) e até 2 novas tentativas em 429/5xx, timeout e erro de rede. Se esgotar: `LlmIndisponivel` → `ERRO_TEMPORARIO` + menu numérico |
 | `bot/evolution.js` | `sendText` (números começando com `5500`, fictícios, nunca são enviados: servem aos testes do simulador) (e, na Etapa 5, `getBase64FromMediaMessage` e `sendWhatsAppAudio`) |
 | `bot/db.js` | Pool `pg` e consultas (`conversa`, `mensagem`, `resposta`, `config`) |
 | `bot/audio.js` (Etapa 5) | Transcrição e voz pela OpenAI (`AUDIO_*`) |

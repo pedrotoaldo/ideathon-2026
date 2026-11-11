@@ -1,5 +1,5 @@
 // Textos fixos da IAra. Espelham docs/CONVERSA.md (seção 1): mudou aqui, muda lá, e vice-versa.
-// Só os textos usados até a Etapa 1; os demais entram nas próximas etapas.
+// Números calculados NÃO ficam aqui: saem de src/calc/safra.cjs.
 
 const T = {
   BOAS_VINDAS: [
@@ -18,6 +18,29 @@ const T = {
     'Pode responder com o número ou escrever.',
   ].join('\n'),
 
+  PEDE_SAFRA: [
+    'Vamos fazer a conta. Me conte, do seu jeito: quantos hectares ou alqueires, quanto vai gastar no total, quantas sacas por hectare espera colher e o preço da saca.',
+    'Exemplo: "10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100 reais".',
+  ].join('\n'),
+
+  // PERGUNTA_CAMPO: um campo por vez, só o que falta
+  PERGUNTA_CAMPO: {
+    area_ha: 'Qual o tamanho da área? Pode ser em hectares ou alqueires.',
+    custo_total: 'Quanto vai gastar no total nessa safra, mais ou menos?',
+    produtividade: 'Quantas sacas por hectare você espera colher?',
+    preco: 'Qual preço da saca você quer usar na conta?',
+  },
+
+  PERGUNTA_UNIDADE_AREA: 'Esses {valor} são hectares ou alqueires?',
+  FORA_DA_FAIXA: 'Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?',
+  PERGUNTA_CORRECAO: 'Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.',
+  ESE_NAO_ENTENDI: 'Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".',
+  SEM_CONTA: 'Antes, preciso da conta da safra. Escreva "1" para começar.',
+
+  OFERTA_PROXIMO: 'Quer testar outro cenário ("e se o preço for 90?"), criar um alerta de preço ("me avisa quando passar de 95") ou entender a reforma tributária (responda 2)?',
+
+  FORA_ESCOPO: 'Eu só ajudo com a conta da safra e com a reforma tributária para o produtor. Escreva "menu" para ver as opções.',
+  EM_BREVE: 'Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.',
   SO_TEXTO_AUDIO: 'Por enquanto eu entendo só texto. Pode me mandar a pergunta escrita?',
   AUDIO_AINDA_NAO: 'Por enquanto eu entendo só texto. Pode escrever?',
   LIMITE: 'Recebi muitas mensagens seguidas. Me dá uns minutinhos e tenta de novo.',

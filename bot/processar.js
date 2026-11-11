@@ -1,10 +1,12 @@
-// Pipeline de cada mensagem (docs/ARCHITECTURE.md seção 3). Etapa 1: filtros, idempotência,
-// kill switch, limite, boas-vindas e menu. O roteamento de safra, tributário e alerta entra nas próximas etapas.
+// Pipeline de cada mensagem (docs/ARCHITECTURE.md seção 3): filtros, idempotência, kill switch, limite,
+// boas-vindas e, daí em diante, a máquina de estados em cerebro.js. I/O (banco e Evolution) fica aqui.
 
 const T = require('./textos');
 const db = require('./db');
 const { enviarTexto } = require('./evolution');
 const { normalizar, mascarar } = require('./normalizar');
+const { tratar } = require('./cerebro');
+const { extrair } = require('./extracao');
 
 function log(m, intencao, t0, extra = '') {
   const hora = new Date().toTimeString().slice(0, 8);
@@ -28,13 +30,13 @@ async function processar(evento) {
   }
 
   let intencao = 'erro';
-  async function responder(texto) {
+  async function responder(texto, intencaoResposta = intencao, { usou_llm = false, versao_prompt = null } = {}) {
     try {
       await enviarTexto(m.destino, texto);
     } catch (e) {
       console.error(`[envio] falhou para ${mascarar(m.numero)}: ${e.message}`);
     }
-    await db.registrarResposta({ message_id: m.message_id, numero: m.numero, intencao, texto, latencia_ms: Date.now() - t0 });
+    await db.registrarResposta({ message_id: m.message_id, numero: m.numero, intencao: intencaoResposta, texto, usou_llm, versao_prompt, latencia_ms: Date.now() - t0 });
   }
 
   try {
@@ -74,12 +76,27 @@ async function processar(evento) {
       await responder(T.MENU);
       await db.salvarEstado(m.numero, 'menu');
     } else {
-      // Etapa 1: qualquer texto devolve o menu. O roteador por regras entra na Etapa 2.
-      intencao = 'menu';
-      await responder(T.MENU);
+      const r = await tratar(conversa, m.texto, { extrair });
+      for (const x of r.respostas) {
+        intencao = x.intencao;
+        await responder(x.texto, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });
+      }
+      await db.salvarEstado(m.numero, r.estado, r.dados);
     }
     log(m, intencao, t0);
   } catch (e) {
+    if (e.name === 'LlmIndisponivel') {
+      // LLM fora: ERRO_TEMPORARIO e menu numérico (o cálculo e o menu não dependem do LLM)
+      console.error(`[llm] ${mascarar(m.numero)}: ${e.message}`);
+      intencao = 'erro_llm';
+      try {
+        await responder(T.ERRO_TEMPORARIO);
+        await responder(T.MENU);
+        await db.salvarEstado(m.numero, 'menu');
+      } catch (e2) { console.error('[erro_llm] falha ao responder:', e2.message); }
+      log(m, 'erro_llm', t0);
+      return;
+    }
     console.error(`[erro] ${mascarar(m.numero)}: ${e.stack || e.message}`);
     intencao = 'erro';
     try { await responder(T.ERRO_TEMPORARIO); } catch (_) { /* nada a fazer */ }

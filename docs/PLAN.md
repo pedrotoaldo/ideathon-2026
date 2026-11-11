@@ -38,15 +38,15 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Idempotência pelo `message_id` em `mensagem`
 - [x] Kill switch (`config.bot_ativo`) e limite por número (20 mensagens em 10 min)
 - [x] Carregar ou criar `conversa`; primeiro contato → `BOAS_VINDAS` + `MENU`
-- [ ] Enviar via `POST /message/sendText/{instance}` (implementado em `bot/evolution.js`; falta confirmar no celular real)
+- [x] Enviar via `POST /message/sendText/{instance}` (`bot/evolution.js`; confirmado no celular real)
 - [x] Fila por número (mensagens do mesmo número processadas em sequência) e teste: 2 números mandando "oi" ao mesmo tempo (feito com o simulador; falta repetir com 2 celulares reais)
 
 ## Etapa 2 — Conta da safra
-- [ ] Roteador por regra (números do menu e palavras-chave de `docs/CONVERSA.md`); LLM só quando ambíguo
-- [ ] Extração com `prompts/extracao_safra.md` via `chat/completions` + `response_format: json_object` (Gemini por ora), validação do JSON e das faixas no bot, pergunta um campo por vez
-- [ ] Estados `coletando_safra` → `confirmando_safra` → `resultado_safra`; alqueire convertido para ha
-- [ ] Resposta com `RESULTADO_SAFRA`; "e se..." com `calcularESe`
-- [ ] Roteiro A de `docs/CONVERSA.md` e a parte em alqueire do Roteiro B (por texto, sem áudio)
+- [x] Roteador por regra (números do menu e palavras-chave de `docs/CONVERSA.md`); LLM só quando ambíguo
+- [x] Extração com `prompts/extracao_safra.md` via `chat/completions` + `response_format: json_object` (Gemini por ora), validação do JSON e das faixas no bot, pergunta um campo por vez
+- [x] Estados `coletando_safra` → `confirmando_safra` → `resultado_safra`; alqueire convertido para ha
+- [x] Resposta com `RESULTADO_SAFRA`; "e se..." com `calcularESe`
+- [x] Roteiro A de `docs/CONVERSA.md` e a parte em alqueire do Roteiro B (por texto, sem áudio), no simulador com o Gemini real e em `bot/cerebro.test.cjs`
 
 ## Etapa 3 — Reforma tributária e proteção
 - [ ] Perguntas do perfil (tipo de pessoa, receita, integrado, outra empresa) → `perfilProvavel` → `PERFIL_RESULTADO` + `CHECKLIST`

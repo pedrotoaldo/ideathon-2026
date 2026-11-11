@@ -128,3 +128,12 @@ test('validação do preço-alvo', () => {
   assert.equal(s.validarPrecoAlvo(5), false);
   assert.equal(s.validarPrecoAlvo('110'), false);
 });
+
+test('confirmação dos dados repete a entrada, com alqueire convertido', () => {
+  const simples = s.montarConfirmacao({ cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 });
+  assert.match(simples, /^Entendi: 10 ha de soja, custo de R\$ 45\.000, 60 sacas\/ha e saca a R\$ 100\./);
+  assert.match(simples, /Responda "sim" ou me corrija/);
+  const alq = s.montarConfirmacao({ cultura: 'soja', area_ha: 48.4, area_origem: { valor: 20, unidade: 'alqueire' }, custo_total: 180000, produtividade: 60, preco: 110 });
+  assert.match(alq, /48,4 ha \(20 alqueires\) de soja/);
+});
+

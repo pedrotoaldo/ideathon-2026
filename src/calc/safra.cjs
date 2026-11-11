@@ -156,6 +156,17 @@ function montarRespostaESe(r) {
   );
 }
 
+// Confirmação dos dados coletados (CONFIRMA_DADOS): só repete o que o produtor disse, com área em ha e alqueire original.
+function montarConfirmacao(d) {
+  const origem = d.area_origem ? ' (' + formatarDecimal(d.area_origem.valor) + ' ' + (d.area_origem.valor === 1 ? 'alqueire' : 'alqueires') + ')' : '';
+  const cultura = d.cultura ? ' de ' + d.cultura : '';
+  return (
+    'Entendi: ' + formatarDecimal(d.area_ha) + ' ha' + origem + cultura + ', custo de ' + formatarReais(d.custo_total) +
+    ', ' + formatarDecimal(d.produtividade) + ' sacas/ha e saca a ' + formatarReais(d.preco) + '.\n' +
+    'Está certo? Responda "sim" ou me corrija.'
+  );
+}
+
 // ---------- Perfil tributário provável (regra fixa, não é LLM) ----------
 
 function perfilProvavel(p, limite = 3600000) {
@@ -233,7 +244,7 @@ const API = {
   HA_POR_ALQUEIRE_PAULISTA, CENARIOS_PADRAO, FAIXAS,
   round2, converterAreaParaHa, converterProdutividadeParaScHa, mesclarExtracao,
   camposFaltantes, camposForaDaFaixa, calcularSafra, calcularESe,
-  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe,
+  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao,
   perfilProvavel, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
 };
 

@@ -30,6 +30,24 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 - produtividade_esperada: "Quantas sacas por hectare você espera colher?"
 - preco: "Qual preço da saca você quer usar na conta?"
 
+**PERGUNTA_UNIDADE_AREA** (quando o produtor diz só o número da área)
+> Esses {valor} são hectares ou alqueires?
+
+**FORA_DA_FAIXA** (valor fora do plausível; vem seguido da pergunta do campo)
+> Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?
+
+**PERGUNTA_CORRECAO** (resposta "não" na confirmação, ou correção que não foi entendida)
+> Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.
+
+**ESE_NAO_ENTENDI**
+> Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".
+
+**SEM_CONTA** ("e se" antes de existir uma conta pronta)
+> Antes, preciso da conta da safra. Escreva "1" para começar.
+
+**EM_BREVE** (temporário: intenções ainda não implementadas, como reforma tributária, alerta e "apagar meus dados"; some quando as Etapas 3 e 4 entrarem)
+> Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.
+
 **CONFIRMA_DADOS**
 > Entendi: {area_ha} ha{area_origem} de {cultura}, custo de R$ {custo_total}, {produtividade} sacas/ha e saca a R$ {preco}.
 > Está certo? Responda "sim" ou me corrija.
@@ -188,7 +206,7 @@ Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gat
 1. "oi" → BOAS_VINDAS + MENU
 2. "1" → PEDE_SAFRA
 3. "10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100" → CONFIRMA_DADOS com 10 ha, R$ 45.000, 60 sc/ha, R$ 100
-4. "sim" → RESULTADO_SAFRA com: mínimo 45 sc/ha; custo por saca R$ 75,00; −20%: sobram R$ 3.000; esperado: sobram R$ 15.000; +10%: sobram R$ 21.000
+4. "sim" → RESULTADO_SAFRA com: mínimo 45 sc/ha; custo por saca R$ 75 (o código omite ,00 em valores inteiros); −20%: sobram R$ 3.000; esperado: sobram R$ 15.000; +10%: sobram R$ 21.000
 5. "e se eu colher 20% menos, fico no prejuízo?" → começa com "Não"; 480 sacas; receita R$ 48.000; sobram R$ 3.000; equilíbrio R$ 93,75
 6. "e se a saca for 70?" → faltam R$ 3.000 no esperado (600 × 70 = 42.000)
 

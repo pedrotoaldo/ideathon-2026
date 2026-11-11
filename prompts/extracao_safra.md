@@ -1,4 +1,4 @@
-# Prompt — extração de dados da safra e do alerta de preço (v1.2)
+# Prompt — extração de dados da safra e do alerta de preço (v1.3)
 
 Uso: nó HTTP "Extração" em `POST {LLM_BASE_URL}/chat/completions`, temperatura 0, com `response_format: {"type": "json_object"}`.
 
@@ -6,7 +6,7 @@ Uso: nó HTTP "Extração" em `POST {LLM_BASE_URL}/chat/completions`, temperatur
 
 No bloco abaixo, o envelope `name`/`strict` é só do formato `json_schema` e **não** é enviado: use o conteúdo de `schema` como descrição dos campos.
 
-Entrada do usuário: `{texto}` (mensagem ou transcrição). Contexto: `{dados_atuais}` (JSON do que já foi coletado).
+Entrada do usuário (o bot manda um JSON como mensagem do usuário): `mensagem` (texto ou transcrição), `dados_atuais` (o que já foi coletado) e `campo_pedido` (o campo que a IAra acabou de perguntar: `area_ha`, `custo_total`, `produtividade` ou `preco`; ou null).
 
 ## Mensagem de sistema
 
@@ -15,11 +15,13 @@ Responda somente com um objeto JSON válido, com exatamente os campos do schema 
 
 Regras:
 - Use null para qualquer campo que a mensagem não informe claramente.
+- `dados_atuais` é só contexto: não repita nele campos que a mensagem não menciona; esses ficam null.
 - Área: guarde o número e a unidade como o produtor falou ("ha" ou "alqueire"). "Alqueire" sem qualificação = alqueire paulista.
 - Valores em reais: "45 mil" = 45000; "1,2 milhão" = 1200000; "cento e oitenta mil" = 180000.
 - Produtividade em sacas por hectare. Se o produtor der sacas por alqueire, preencha `produtividade_unidade` = "sc/alqueire".
 - Preço em reais por saca de 60 kg.
 - Se a mensagem for uma pergunta "e se...", preencha `alteracao` com o que muda: percentual de produtividade (ex.: -20), novo preço, novo custo ou nova produtividade.
+- Se `campo_pedido` não é null e a mensagem traz só um número (ex.: "45 mil", "60", "100"), preencha esse campo. Para `area_ha` sem unidade, deixe `area_unidade` = null: o bot pergunta se são hectares ou alqueires.
 - Se a mensagem só confirma ("sim", "isso", "certo", "ok"), `confirmacao` = true.
 - Se a mensagem pede alerta de preço ("me avisa quando a soja passar de 110"), preencha `gatilho_preco` com o preço e `cultura` com a cultura citada.
 - Se a mensagem não tem nada a ver com safra, `fora_do_tema` = true.
