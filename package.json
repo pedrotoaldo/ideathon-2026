@@ -4,8 +4,14 @@
   "private": true,
   "description": "Assistente de WhatsApp do Agro na Medida (Ideathon Mandaguari 2026)",
   "scripts": {
-    "test": "node --test \"src/**/*.test.cjs\"",
+    "test": "node --test \"src/**/*.test.cjs\" \"bot/**/*.test.cjs\"",
+    "bot": "node --env-file=.env bot/server.js",
     "build:n8n": "node scripts/build-n8n.mjs"
   },
-  "engines": { "node": ">=21" }
+  "engines": {
+    "node": ">=21"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
 }

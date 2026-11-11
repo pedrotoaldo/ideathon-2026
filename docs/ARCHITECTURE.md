@@ -41,12 +41,12 @@ Serviço Node único, sem framework: `http` nativo, `pg`, `fetch` nativo; `node 
 Módulos:
 | Arquivo | Função |
 | --- | --- |
-| `bot/server.js` | Servidor HTTP, valida o path do webhook, entrega o evento à fila por número |
+| `bot/server.js` | Servidor HTTP: `POST <path do BOT_WEBHOOK_URL>` (outros paths: 404), `GET /health` → `{"ok":true}`; entrega o evento à fila por número |
 | `bot/normalizar.js` | Extrai `numero` (remoteJid sem sufixo), `message_id`, `fromMe`, `isGroup`, `tipo` (texto, audio, outro), `texto`, `duracao_audio` |
 | `bot/cerebro.js` | Máquina de estados (seção 4): decide texto fixo, extração, cálculo ou redator tributário |
 | `bot/textos.js` | Textos fixos, copiados literalmente de `docs/CONVERSA.md` |
 | `bot/llm.js` | `POST {LLM_BASE_URL}/chat/completions` (extração e redator tributário) |
-| `bot/evolution.js` | `sendText` (e, na Etapa 5, `getBase64FromMediaMessage` e `sendWhatsAppAudio`) |
+| `bot/evolution.js` | `sendText` (números começando com `5500`, fictícios, nunca são enviados: servem aos testes do simulador) (e, na Etapa 5, `getBase64FromMediaMessage` e `sendWhatsAppAudio`) |
 | `bot/db.js` | Pool `pg` e consultas (`conversa`, `mensagem`, `resposta`, `config`) |
 | `bot/audio.js` (Etapa 5) | Transcrição e voz pela OpenAI (`AUDIO_*`) |
 | `src/calc/safra.cjs` | Todos os números (importado com `require`) |
@@ -72,6 +72,8 @@ Pipeline de cada mensagem:
 | 14 | Responder | (Etapa 5) se `responde_audio`: TTS do `texto_falado` → `sendWhatsAppAudio`; depois sempre `sendText`. Falha no TTS não impede o texto |
 | 15 | Log | `resposta` com intenção, latência, versão do prompt |
 | 16 | Erro | `try/catch` no topo do processamento: envia `ERRO_TEMPORARIO` e grava o erro; exceção nunca derruba o processo (`uncaughtException` e `unhandledRejection` só logam) |
+
+**Log:** cada mensagem imprime uma linha no console: `[hh:mm:ss] 5544******10 tipo=texto intencao=menu 18ms` (número mascarado, tipo, intenção, latência).
 
 Dica: o roteamento por números do menu e palavras-chave é feito em código, sem LLM. O LLM só entra quando a mensagem é ambígua ou precisa de extração. Isso reduz latência e custo com a plateia.
 

@@ -31,15 +31,15 @@ Real × simulado na demo:
 
 ## Etapa 1 — Fluxo base no bot (serviço Node em `bot/`)
 O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e `--env-file`), não o n8n. Reaproveita `src/calc/safra.cjs` com `require`, os textos de `docs/CONVERSA.md` e os prompts de `prompts/`. Sobe com `npm run bot`; a Evolution chama `host.docker.internal:<BOT_PORT>`. O n8n é a Fase Plus 8.
-- [ ] Esqueleto: `bot/server.js` (responde 200 na hora e processa depois), `bot/textos.js`, `bot/db.js`, `bot/evolution.js`; `npm run bot`; webhook da instância apontando para o bot (path com sufixo aleatório do `.env`)
-- [ ] `scripts/simular-mensagem.mjs <numero> "<texto>"`: manda um payload `MESSAGES_UPSERT` falso ao bot e imprime a resposta (para os roteiros sem celular)
-- [ ] Normalizar payload (número, tipo, texto, id, fromMe, grupo)
-- [ ] Descartar `fromMe`, grupos, status e mídias que não sejam texto (`SO_TEXTO_AUDIO`); **áudio** responde `AUDIO_AINDA_NAO` até a Etapa 5
-- [ ] Idempotência pelo `message_id` em `mensagem`
-- [ ] Kill switch (`config.bot_ativo`) e limite por número (20 mensagens em 10 min)
-- [ ] Carregar ou criar `conversa`; primeiro contato → `BOAS_VINDAS` + `MENU`
-- [ ] Enviar via `POST /message/sendText/{instance}`
-- [ ] Fila por número (mensagens do mesmo número processadas em sequência) e teste: 2 celulares mandando "oi" ao mesmo tempo
+- [x] Esqueleto: `bot/server.js` (responde 200 na hora e processa depois), `bot/textos.js`, `bot/db.js`, `bot/evolution.js`; `npm run bot`; webhook da instância apontando para o bot (path com sufixo aleatório do `.env`)
+- [x] `scripts/simular-mensagem.mjs <numero> "<texto>"`: manda um payload `MESSAGES_UPSERT` falso ao bot e imprime a resposta (para os roteiros sem celular)
+- [x] Normalizar payload (número, tipo, texto, id, fromMe, grupo)
+- [x] Descartar `fromMe`, grupos, status e mídias que não sejam texto (`SO_TEXTO_AUDIO`); **áudio** responde `AUDIO_AINDA_NAO` até a Etapa 5
+- [x] Idempotência pelo `message_id` em `mensagem`
+- [x] Kill switch (`config.bot_ativo`) e limite por número (20 mensagens em 10 min)
+- [x] Carregar ou criar `conversa`; primeiro contato → `BOAS_VINDAS` + `MENU`
+- [ ] Enviar via `POST /message/sendText/{instance}` (implementado em `bot/evolution.js`; falta confirmar no celular real)
+- [x] Fila por número (mensagens do mesmo número processadas em sequência) e teste: 2 números mandando "oi" ao mesmo tempo (feito com o simulador; falta repetir com 2 celulares reais)
 
 ## Etapa 2 — Conta da safra
 - [ ] Roteador por regra (números do menu e palavras-chave de `docs/CONVERSA.md`); LLM só quando ambíguo
