@@ -10,7 +10,7 @@ O protótipo do Ideathon é o **Núcleo** (`docs/PLAN.md`). Tudo aqui ficou de f
 | Plus 2 | Gatilho de preço real | Simulado por `scripts/disparar-alerta.mjs` | 1 h 30 | Núcleo |
 | Plus 3 | Webapp: painel da demo + admin de cotação | Cortado (painel vira slide) | 1 h 30 | Plus 2 para o admin |
 | Plus 4 | Webapp: painel do produtor | Cortado (o vídeo de demonstração mostra a ideia) | 1 h | Plus 3 |
-| Plus 5 | Redis: fila, agrupamento de mensagens, limites e memória curta | Não precisa (Postgres dá conta) | 1 a 2 h | Núcleo |
+| Plus 5 | Redis: fila, agrupamento entre processos, limites e memória curta | Não precisa (Postgres dá conta; o agrupamento em memória já está no Núcleo) | 1 a 2 h | Núcleo |
 | Plus 6 | Extras: resumo, clima, apagar dados | Cortado | 1 h | Núcleo |
 | Plus 7 | Piloto: Cloud API oficial, RAG, cooperativa, templates | Citado no pitch como próximo passo | dias | Plus 2 e validação |
 | Plus 8 | Migrar a orquestração do bot (`bot/`) para o n8n | Não: o Núcleo roda no bot em Node | 3 a 4 h | Núcleo |
@@ -55,14 +55,14 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 | Uso | Problema que resolve | Como |
 | --- | --- | --- |
 | Fila (queue) | Muitas mensagens ao mesmo tempo travando o processo único do bot | Fila no Redis com mais de um worker do bot (ou n8n em `EXECUTIONS_MODE=queue`, se a Plus 8 for feita) |
-| Agrupar mensagens seguidas (debounce) | Produtor manda 3 mensagens picadas ("plantei 10 ha" / "de soja" / "gastei 45 mil") e a IAra responde 3 vezes | Guardar as mensagens do número numa lista no Redis com TTL de ~8 s; responder só quando o produtor para de digitar, juntando tudo |
+| Agrupar mensagens seguidas (debounce) | Produtor manda 3 mensagens picadas ("plantei 10 ha" / "de soja" / "gastei 45 mil") e a IAra responde 3 vezes | **Já no Núcleo, em memória** (`bot/debounce.js`: janela de 4 s reiniciada a cada mensagem, máximo de 12 s). O Redis só entra se o bot passar a rodar em mais de um processo: aí a lista de mensagens do número vai para o Redis com TTL |
 | Limite por número | Contagem rápida sem consultar o Postgres a cada mensagem | `INCR` + `EXPIRE` por número e janela |
 | Memória curta da conversa | Contexto recente para o LLM sem montar histórico do banco | Redis com TTL (no n8n: nó "Redis Chat Memory"); o Postgres continua sendo a fonte de verdade |
 | Trava por número | Duas mensagens do mesmo número processadas ao mesmo tempo | `SET numero NX PX 10000` como lock |
 
 **Regra:** o Redis é auxiliar e pode perder dados. Tudo que precisa durar (safra, perfil, alertas, consentimento, logs) continua no Postgres.
 
-**Ordem sugerida:** debounce primeiro (melhora muito a conversa por áudio e texto picado), depois queue mode se o volume crescer.
+**Ordem sugerida:** o debounce em memória já está no Núcleo; falta, se o volume crescer, a fila entre processos (e levar o debounce para o Redis junto).
 
 ## Plus 6 — Extras (SPEC F14 a F16)
 - "resumo": junta safra, perfil e checklist numa mensagem para encaminhar ao contador.

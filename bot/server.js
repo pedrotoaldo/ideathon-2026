@@ -2,7 +2,8 @@
 // Uso: npm run bot   (lê o .env com --env-file)
 
 const http = require('node:http');
-const { processar } = require('./processar');
+const { processar, DEBOUNCE_MS, DEBOUNCE_MAX_MS } = require('./processar');
+const { enfileirar } = require('./fila');
 const { normalizar } = require('./normalizar');
 const { listaPermitida } = require('./acesso');
 
@@ -15,15 +16,6 @@ if (!CAMINHO || /TROQUE/.test(CAMINHO)) {
   process.exit(1);
 }
 
-// Fila por número: mensagens do mesmo número são processadas em sequência
-const filas = new Map();
-function enfileirar(chave, tarefa) {
-  const anterior = filas.get(chave) || Promise.resolve();
-  const atual = anterior.then(tarefa).catch((e) => console.error('[fila]', e.message)).finally(() => {
-    if (filas.get(chave) === atual) filas.delete(chave);
-  });
-  filas.set(chave, atual);
-}
 
 function lerCorpo(req, limite = 1_000_000) {
   return new Promise((resolve, reject) => {
@@ -65,5 +57,6 @@ process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e)
 servidor.listen(PORTA, '0.0.0.0', () => {
   const so = listaPermitida();
   if (so.length) console.warn(`*** MODO TESTE: respondendo só a ${so.join(', ')}. Esvazie BOT_SOMENTE_NUMEROS no .env quando o MVP estiver funcional. ***`);
+  console.log(`Agrupamento de mensagens: janela de ${DEBOUNCE_MS} ms, máximo de ${DEBOUNCE_MAX_MS} ms (DEBOUNCE_MS e DEBOUNCE_MAX_MS no .env)`);
   console.log(`Bot no ar em http://0.0.0.0:${PORTA}  (health: /health)  webhook: ${CAMINHO}`);
 });

@@ -53,6 +53,7 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Número solto só vai para o campo que a IAra acabou de perguntar (sem pergunta pendente, `NUMERO_SOLTO`); vários números para um campo: aceita se o texto deixa claro, senão mostra a interpretação e pede "sim"
 - [x] Faixa de produtividade por cultura em `config.faixas_cultura` (soja 20 a 90, milho 40 a 200, café 10 a 80; valores iniciais a validar com um técnico): fora dela, a confirmação destaca o aviso e exige "sim, está certo"
 - [x] Custo por saca acima de 2 vezes o preço: o resultado ganha "Esse resultado ficou bem fora do comum. Vale conferir os números." (`safra.cjs`)
+- [x] Agrupamento de mensagens (debounce em memória, `DEBOUNCE_MS=4000`, `DEBOUNCE_MAX_MS=12000`, presença "digitando" pela Evolution) depois de idempotência, kill switch e limite e antes do roteador; "1" seguido de "2" na janela cai na regra do número solto
 - [x] Regressão da conversa do celular: `bot/cerebro.test.cjs` (offline) e `npm run regressao` (bot no ar, LLM real)
 
 ## Etapa 3 — Reforma tributária e proteção

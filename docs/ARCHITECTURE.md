@@ -7,7 +7,7 @@
 | Canal | WhatsApp via **Evolution API v2** (`evoapicloud/evolution-api:v2.3.7`), integração `WHATSAPP-BAILEYS` | Sobe em minutos, sem aprovação da Meta | Mesma Evolution com `WHATSAPP-BUSINESS` (Cloud API oficial) |
 | Orquestração | **Bot em Node** (`bot/`: `http` nativo + `pg`, `fetch` nativo; `npm run bot`) | Código versionado e testável, reaproveita `safra.cjs` com `require`; sem instância extra | Plus 8: n8n; ou o mesmo bot em mais de um processo |
 | Banco | **PostgreSQL 16** | Estado da conversa, logs, idempotência | + pgvector para RAG |
-| Cache da Evolution | Redis 7 | Só cache interno da Evolution (sessão do WhatsApp). Não guarda conversas da IAra | Plus 5: fila, agrupamento de mensagens, limites, memória curta |
+| Cache da Evolution | Redis 7 | Só cache interno da Evolution (sessão do WhatsApp). Não guarda conversas da IAra | Plus 5: fila entre processos, agrupamento entre processos, limites, memória curta (o agrupamento em memória de um processo só já está no Núcleo) |
 | Chat (LLM) | API compatível com OpenAI via HTTP Request (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`). **Provisório: Gemini**; depois OpenAI | Só `chat/completions` + `response_format`; a troca de provedor é só no `.env` (seção 7.1) | Avaliar custo |
 | Transcrição — Etapa 5 | OpenAI `POST {AUDIO_BASE_URL}/audio/transcriptions` (`AUDIO_MODEL_TRANSCRICAO`) | Português bom e rápido; separado do chat | Igual |
 | Voz da IAra (TTS) — Etapa 5 | OpenAI `POST {AUDIO_BASE_URL}/audio/speech` (`AUDIO_MODEL_TTS`, voz em `TTS_VOZ`) | Resposta falada curta; a Evolution converte em nota de voz | Avaliar voz regional |
@@ -41,6 +41,8 @@ Serviço Node único, sem framework: `http` nativo, `pg`, `fetch` nativo; `node 
 Módulos:
 | Arquivo | Função |
 | --- | --- |
+| `bot/debounce.js` | Agrupamento de mensagens por número em memória (janela reiniciável + máximo) |
+| `bot/fila.js` | Fila por número (mensagens e grupos do mesmo número em sequência) |
 | `bot/server.js` | Servidor HTTP: `POST <path do BOT_WEBHOOK_URL>` (outros paths: 404), `GET /health` → `{"ok":true}`; entrega o evento à fila por número |
 | `bot/normalizar.js` | Extrai `numero` (remoteJid sem sufixo), `message_id`, `fromMe`, `isGroup`, `tipo` (texto, audio, outro), `texto`, `duracao_audio` |
 | `bot/acesso.js` | Modo teste: se `BOT_SOMENTE_NUMEROS` estiver no `.env`, o bot ignora (sem responder nem gravar) qualquer outro número. Números fictícios `5500...` do simulador sempre passam |
@@ -65,6 +67,7 @@ Pipeline de cada mensagem:
 | 4 | Idempotência | `INSERT INTO mensagem(message_id, ...) ON CONFLICT DO NOTHING RETURNING id`; vazio → fim |
 | 5 | Kill switch e limite | Lê `config.bot_ativo` e conta mensagens do número nos últimos 10 min |
 | 6 | Bloqueios | Inativo → `MANUTENCAO`; acima do limite → `LIMITE` (uma vez por janela) |
+| 6b | Agrupar | Mensagens de **texto** do mesmo número esperam numa janela de `DEBOUNCE_MS` (4000 ms), reiniciada a cada mensagem nova, com máximo de `DEBOUNCE_MAX_MS` (12000 ms) desde a primeira. Cada mensagem continua gravada em `mensagem`; o texto vai concatenado, uma por linha, e a resposta fica ligada à última. Enquanto espera, `POST /chat/sendPresence/{instance}` (`presence: composing`); se falhar, segue sem ela. Áudio e mídia respondem na hora. É em memória: serve a um processo só (Plus 5 para mais de um) |
 | 7 | Áudio (**Etapa 5**) | `getBase64FromMediaMessage` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → `texto`. Antes da Etapa 5 este passo não existe: áudio responde `AUDIO_AINDA_NAO` |
 | 8 | Carregar conversa | Cria `conversa` se não existe |
 | 9 | Cérebro | Máquina de estados (seção 4) |

@@ -44,6 +44,7 @@ async function chatJson({ system, user, fetchFn = fetch }) {
 
   let ultimoErro = 'sem tentativa';
   for (let i = 0; i < TENTATIVAS; i++) {
+    const mandouTemperatura = !semTemperatura; // chamadas simultâneas podem ter saído antes de a flag virar
     try {
       const r = await fetchFn(url, {
         method: 'POST',
@@ -56,7 +57,7 @@ async function chatJson({ system, user, fetchFn = fetch }) {
         return parseJsonResposta(j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content);
       }
       ultimoErro = 'HTTP ' + r.status;
-      if (r.status === 400 && !semTemperatura && /temperature/i.test(await r.text().catch(() => ''))) {
+      if (r.status === 400 && mandouTemperatura && /temperature/i.test(await r.text().catch(() => ''))) {
         semTemperatura = true; // refaz já, sem gastar uma das novas tentativas
         i--;
         continue;

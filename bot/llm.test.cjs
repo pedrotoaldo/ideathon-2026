@@ -54,3 +54,17 @@ test('modelo que recusa temperature 0: refaz sem o campo', async () => {
   assert.equal(corpos[0].temperature, 0);
   assert.equal('temperature' in corpos[1], false);
 });
+
+test('duas chamadas simultâneas recusadas por causa da temperatura: as duas se recuperam', async () => {
+  delete process.env.LLM_TEMPERATURE;
+  // o módulo guarda a flag entre chamadas: força o estado "ainda manda temperatura" recarregando o módulo
+  delete require.cache[require.resolve('./llm')];
+  const fresco = require('./llm');
+  const fetchFn = async (_u, opts) => {
+    await new Promise((r) => setTimeout(r, 20));
+    if ('temperature' in JSON.parse(opts.body)) return { ok: false, status: 400, text: async () => "Unsupported value: 'temperature'" };
+    return ok({ d: 4 });
+  };
+  const [a, b] = await Promise.all([fresco.chatJson({ system: 's', user: 'u', fetchFn }), fresco.chatJson({ system: 's', user: 'u', fetchFn })]);
+  assert.deepEqual([a, b], [{ d: 4 }, { d: 4 }]);
+});
