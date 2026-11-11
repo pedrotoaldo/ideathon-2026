@@ -28,14 +28,15 @@ const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
 // Alguns modelos (ex.: OpenAI mais novos) só aceitam a temperatura padrão. Se o provedor recusar, o bot passa a omitir o campo.
 let semTemperatura = process.env.LLM_TEMPERATURE === 'omitir';
 
-async function chatJson({ system, user, fetchFn = fetch }) {
+// Chamada comum: devolve o texto da resposta (json = true pede response_format json_object)
+async function chamar({ system, user, json, temperatura = 0, fetchFn = fetch }) {
   const base = String(process.env.LLM_BASE_URL || '').replace(/\/+$/, '');
   const url = base + '/chat/completions';
   const timeout = Number(process.env.LLM_TIMEOUT_MS) || 12000;
   const montarCorpo = () => JSON.stringify({
     model: process.env.LLM_MODEL_CHAT,
-    ...(semTemperatura ? {} : { temperature: 0 }),
-    response_format: { type: 'json_object' },
+    ...(semTemperatura ? {} : { temperature: temperatura }),
+    ...(json ? { response_format: { type: 'json_object' } } : {}),
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: user },
@@ -54,7 +55,7 @@ async function chatJson({ system, user, fetchFn = fetch }) {
       });
       if (r.ok) {
         const j = await r.json();
-        return parseJsonResposta(j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content);
+        return j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
       }
       ultimoErro = 'HTTP ' + r.status;
       if (r.status === 400 && mandouTemperatura && /temperature/i.test(await r.text().catch(() => ''))) {
@@ -71,4 +72,15 @@ async function chatJson({ system, user, fetchFn = fetch }) {
   throw new LlmIndisponivel('LLM indisponível: ' + ultimoErro);
 }
 
-module.exports = { chatJson, parseJsonResposta, LlmIndisponivel };
+// Extração estruturada: objeto JSON ou null
+async function chatJson(opcoes) {
+  return parseJsonResposta(await chamar({ ...opcoes, json: true }));
+}
+
+// Texto livre (redator tributário)
+async function chatTexto(opcoes) {
+  const t = await chamar({ ...opcoes, json: false });
+  return typeof t === 'string' ? t.trim() : '';
+}
+
+module.exports = { chatJson, chatTexto, parseJsonResposta, LlmIndisponivel };

@@ -110,11 +110,11 @@ test('"e se" sem conta pronta pede a conta; fora do escopo vai por LLM', async (
   assert.equal(p.r.respostas[0].intencao, 'fora_escopo');
 });
 
-test('menu sai do fluxo; "3" e "2" ainda não implementados respondem EM_BREVE sem LLM', async () => {
+test('menu sai do fluxo; alerta de preço (Etapa 4) ainda responde EM_BREVE sem LLM', async () => {
   const extrair = llm();
   let p = await passo({ estado: 'coletando_safra', dados: { safra: {} } }, 'menu', extrair);
   assert.equal(p.r.estado, 'menu');
-  p = await passo({ estado: 'menu', dados: {} }, '2', extrair);
+  p = await passo({ estado: 'menu', dados: {} }, '4', extrair);
   assert.match(p.texto, /ainda não está pronta/);
   assert.equal(extrair.chamadas.length, 0);
 });
@@ -123,7 +123,8 @@ test('roteador: palavras-chave e fluxo ativo', () => {
   assert.equal(rotear('Oi!', 'menu').intencao, 'menu');
   assert.equal(rotear('1', 'menu').intencao, 'safra');
   assert.equal(rotear('quero calcular o custo', 'menu').intencao, 'safra');
-  assert.equal(rotear('2', 'menu').intencao, 'tributario');
+  assert.equal(rotear('2', 'menu').intencao, 'perfil');
+  assert.equal(rotear('me conta uma piada', 'menu').intencao, 'ambiguo');
   assert.equal(rotear('me avisa quando a soja passar de 95', 'menu').intencao, 'gatilho');
   assert.equal(rotear('quem ganhou o jogo?', 'menu').intencao, 'ambiguo');
   assert.equal(rotear('1', 'coletando_safra').intencao, 'fluxo');

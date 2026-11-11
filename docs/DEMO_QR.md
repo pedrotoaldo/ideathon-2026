@@ -4,7 +4,7 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 
 ## 1. QR code
 - Link: `https://wa.me/55DDDNUMERO?text=Oi%20IAra` (abre o WhatsApp com a mensagem pronta).
-- Gerar o QR em alta resolução e testar com Android e iPhone, a 3 metros da tela projetada.
+- O QR já está em `docs/demo/qr-iara.png` (2000 x 2000 px; refazer com `node scripts/gerar-qr.mjs` se o número mudar). Gerar o QR em alta resolução e testar com Android e iPhone, a 3 metros da tela projetada.
 - Texto ao lado do QR: "Escaneie e mande um áudio: 'tenho 10 hectares, gastei 45 mil, espero 60 sacas, saca a 100'". Isso puxa todo mundo para o roteiro que funciona melhor.
 - Aviso pequeno: "Demonstração. Use dados de exemplo."
 

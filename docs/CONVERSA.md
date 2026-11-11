@@ -61,7 +61,7 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **SEM_CONTA** ("e se" antes de existir uma conta pronta)
 > Antes, preciso da conta da safra. Escreva "1" para começar.
 
-**EM_BREVE** (temporário: intenções ainda não implementadas, como reforma tributária e alerta; some quando as Etapas 3 e 4 entrarem)
+**EM_BREVE** (temporário: intenções ainda não implementadas, como o alerta de preço; some quando a Etapa 4 entrar)
 > Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.
 
 **CONFIRMA_DADOS**
@@ -115,6 +115,24 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > • Contratos de integração, arrendamento ou parceria
 > • Enquadramento atual informado pelo contador
 > Quer que eu junte tudo num resumo? Escreva "resumo".
+
+**PERFIL_NAO_ENTENDI** (prefixo da pergunta repetida quando a resposta do perfil não foi entendida; na receita, acrescenta a dica abaixo)
+> Não entendi bem.
+
+**PERFIL_RECEITA_DICA**
+> Escreva o valor completo, por exemplo "900 mil" ou "1 milhão e meio".
+
+**TEXTO_LONGO** (mensagem com mais de 800 caracteres)
+> Sua mensagem ficou muito longa para eu ler direito. Pode mandar uma versão mais curta?
+
+**IDENTIDADE** ("você é uma pessoa?", "é robô?")
+> Eu sou a IAra, uma assistente virtual do Agro na Medida. Não sou uma pessoa. Se quiser falar com alguém da equipe, escreva "3".
+
+**PREVISAO** (pedido de previsão de preço ou de colheita; regra 6)
+> Eu não faço previsão de preço nem de colheita. Posso fazer a conta com os números que você me passar (escreva "1") ou avisar quando o preço da saca chegar onde você quer.
+
+**AGRONOMO** (praga, doença, adubação: fora do que a IAra avalia)
+> Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico, e eu não consigo avaliar daqui. Se quiser, escreva "3" que eu registro o pedido de atendimento.
 
 **FRASE_PADRAO_TRIBUTARIA**
 > Isso é orientação geral. A decisão do seu caso é com o seu contador.

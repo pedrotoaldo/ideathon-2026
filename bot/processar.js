@@ -1,5 +1,5 @@
 // Pipeline de cada mensagem (docs/ARCHITECTURE.md seção 3).
-// Parte A (por mensagem): filtros, modo teste, idempotência, kill switch, limite; texto entra no agrupamento (debounce).
+// Parte A (por mensagem): filtros, modo teste, idempotência, kill switch, limite (em memória), texto acima de 800 caracteres; texto entra no agrupamento (debounce).
 // Parte B (por grupo de mensagens do mesmo número): boas-vindas ou máquina de estados (cerebro.js).
 // I/O (banco e Evolution) fica aqui; as decisões de conversa ficam no cerebro.js.
 
@@ -10,14 +10,19 @@ const { normalizar, mascarar } = require('./normalizar');
 const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
 const { extrair } = require('./extracao');
+const { responder: responderTributario } = require('./tributario');
 const { criarDebounce } = require('./debounce');
 const { enfileirar } = require('./fila');
+const { registrar } = require('./limite');
+const { pedeApagar } = require('./roteador');
+
+const MAX_CARACTERES = 800;
 
 function inteiroDoEnv(valor, padrao) {
   if (valor === undefined || valor === '' || !Number.isFinite(Number(valor))) return padrao;
   return Number(valor);
 }
-const DEBOUNCE_MS = inteiroDoEnv(process.env.DEBOUNCE_MS, 4000);
+const DEBOUNCE_MS = inteiroDoEnv(process.env.DEBOUNCE_MS, 2500);
 const DEBOUNCE_MAX_MS = inteiroDoEnv(process.env.DEBOUNCE_MAX_MS, 12000);
 
 function log(m, intencao, t0, extra = '') {
@@ -89,16 +94,23 @@ async function processar(evento) {
       return;
     }
 
-    // Limite por número (padrão: 20 mensagens em 10 min)
+    // Limite por número (padrão: 20 mensagens em 10 min), contado em memória: "apagar meus dados" não zera
     const lim = await db.config('rate_limit', { mensagens: 20, janela_min: 10 });
-    if ((await db.contarMensagens(m.numero, lim.janela_min)) > lim.mensagens) {
-      await db.carregarConversa(m.numero);
-      if (await db.jaAvisouLimite(m.numero, lim.janela_min)) {
-        log(m, 'limite_silencioso', t0);
-      } else {
+    const l = registrar(m.numero, lim);
+    if (l.excedeu && !pedeApagar(m.texto)) { // quem estourou o limite ainda pode pedir para apagar os dados
+      if (l.avisar) {
         await responder(T.LIMITE, 'limite');
         log(m, 'limite', t0);
+      } else {
+        log(m, 'limite_silencioso', t0);
       }
+      return;
+    }
+
+    // Texto longo demais: pede versão curta (também protege o LLM de entrada enorme)
+    if (m.tipo === 'texto' && String(m.texto || '').length > MAX_CARACTERES) {
+      await responder(T.TEXTO_LONGO, 'texto_longo');
+      log(m, 'texto_longo', t0);
       return;
     }
 
@@ -139,7 +151,7 @@ async function responderGrupo(numero, itens) {
       await db.salvarEstado(m.numero, 'menu');
     } else {
       const faixasCultura = await db.config('faixas_cultura', undefined);
-      const r = await tratar(conversa, texto, { extrair, faixasCultura });
+      const r = await tratar(conversa, texto, { extrair, faixasCultura, tributario: responderTributario });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
         intencao = 'apagar';
@@ -149,6 +161,7 @@ async function responderGrupo(numero, itens) {
         log(m, intencao, t0, extra);
         return;
       }
+      if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
       for (const x of r.respostas) {
         intencao = x.intencao;
         await responder(x.texto, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });

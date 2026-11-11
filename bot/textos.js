@@ -45,6 +45,31 @@ const T = {
 
   OFERTA_PROXIMO: 'Quer testar outro cenário ("e se o preço for 90?"), criar um alerta de preço ("me avisa quando passar de 95") ou entender a reforma tributária (responda 2)?',
 
+  TEXTO_LONGO: 'Sua mensagem ficou muito longa para eu ler direito. Pode mandar uma versão mais curta?',
+
+  PERGUNTA_TIPO_PESSOA: 'Vamos ver seu perfil na reforma. Você produz como pessoa física ou tem empresa (CNPJ) rural?',
+  PERGUNTA_RECEITA: 'Qual é, mais ou menos, a sua receita bruta por ano com a produção? Pode ser um valor aproximado.',
+  PERGUNTA_INTEGRADO: 'Você é produtor integrado (produz em contrato de integração, como em aves ou suínos)?',
+  PERGUNTA_OUTRA_EMPRESA: 'Você tem participação em outra empresa que também atua no agro?',
+  PERFIL_NAO_ENTENDI: 'Não entendi bem.',
+  PERFIL_RECEITA_DICA: 'Escreva o valor completo, por exemplo "900 mil" ou "1 milhão e meio".',
+  FRASE_PADRAO_TRIBUTARIA: 'Isso é orientação geral. A decisão do seu caso é com o seu contador.',
+  CHECKLIST: [
+    'Para levar ao contador:',
+    '• Receita bruta dos últimos 12 meses',
+    '• Notas de venda da produção e de compra de insumos',
+    '• Participação em outras empresas',
+    '• Contratos de integração, arrendamento ou parceria',
+    '• Enquadramento atual informado pelo contador',
+    'Quer que eu junte tudo num resumo? Escreva "resumo".',
+  ].join('\n'),
+  NAO_SEI_TRIBUTARIO: 'Essa eu não sei responder com segurança. Vale levar a dúvida ao seu contador. Se quiser, escreva "3" que eu registro o pedido de atendimento.',
+  ENCAMINHAMENTO: 'Registrei seu pedido. Nesta demonstração, a equipe do Agro na Medida pode conversar com você aqui no evento. No produto real, o técnico ou o contador da cooperativa recebe o resumo.',
+  AGRONOMO: 'Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico, e eu não consigo avaliar daqui. Se quiser, escreva "3" que eu registro o pedido de atendimento.',
+
+  IDENTIDADE: 'Eu sou a IAra, uma assistente virtual do Agro na Medida. Não sou uma pessoa. Se quiser falar com alguém da equipe, escreva "3".',
+  PREVISAO: 'Eu não faço previsão de preço nem de colheita. Posso fazer a conta com os números que você me passar (escreva "1") ou avisar quando o preço da saca chegar onde você quer.',
+
   FORA_ESCOPO: 'Eu só ajudo com a conta da safra e com a reforma tributária para o produtor. Escreva "menu" para ver as opções.',
   EM_BREVE: 'Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.',
   SO_TEXTO_AUDIO: 'Por enquanto eu entendo só texto. Pode me mandar a pergunta escrita?',

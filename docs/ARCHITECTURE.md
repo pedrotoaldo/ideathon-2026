@@ -41,6 +41,8 @@ Serviço Node único, sem framework: `http` nativo, `pg`, `fetch` nativo; `node 
 Módulos:
 | Arquivo | Função |
 | --- | --- |
+| `bot/limite.js` | Limite de mensagens por número, em memória (janela deslizante, aviso uma vez por janela) |
+| `bot/tributario.js` | Redator tributário: monta o prompt (`prompts/agente_sistema.md` + `content/reforma_tributaria_base.md` + perfil), chama o LLM em texto livre e confere a saída (tokens `NAO_SEI`/`FORA_ESCOPO` viram textos fixos; descarta recomendação de regime/venda e valores em reais que não vêm da base; garante a frase padrão) |
 | `bot/debounce.js` | Agrupamento de mensagens por número em memória (janela reiniciável + máximo) |
 | `bot/fila.js` | Fila por número (mensagens e grupos do mesmo número em sequência) |
 | `bot/server.js` | Servidor HTTP: `POST <path do BOT_WEBHOOK_URL>` (outros paths: 404), `GET /health` → `{"ok":true}`; entrega o evento à fila por número |
@@ -65,7 +67,7 @@ Pipeline de cada mensagem:
 | 2 | Normalizar | `bot/normalizar.js` |
 | 3 | Descartar | `fromMe`, grupo (`@g.us`), status (`status@broadcast`), tipo `outro` → fim (tipo outro responde `SO_TEXTO_AUDIO`; até a Etapa 5, tipo audio responde `AUDIO_AINDA_NAO`) |
 | 4 | Idempotência | `INSERT INTO mensagem(message_id, ...) ON CONFLICT DO NOTHING RETURNING id`; vazio → fim |
-| 5 | Kill switch e limite | Lê `config.bot_ativo` e conta mensagens do número nos últimos 10 min |
+| 5 | Kill switch e limite | Lê `config.bot_ativo`; o limite (`config.rate_limit`, padrão 20 em 10 min) é contado **em memória** (`bot/limite.js`), separado do banco: "apagar meus dados" não zera a contagem |
 | 6 | Bloqueios | Inativo → `MANUTENCAO`; acima do limite → `LIMITE` (uma vez por janela) |
 | 6b | Agrupar | Mensagens de **texto** do mesmo número esperam numa janela de `DEBOUNCE_MS` (4000 ms), reiniciada a cada mensagem nova, com máximo de `DEBOUNCE_MAX_MS` (12000 ms) desde a primeira. Cada mensagem continua gravada em `mensagem`; o texto vai concatenado, uma por linha, e a resposta fica ligada à última. Enquanto espera, `POST /chat/sendPresence/{instance}` (`presence: composing`); se falhar, segue sem ela. Áudio e mídia respondem na hora. É em memória: serve a um processo só (Plus 5 para mais de um) |
 | 7 | Áudio (**Etapa 5**) | `getBase64FromMediaMessage` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → `texto`. Antes da Etapa 5 este passo não existe: áudio responde `AUDIO_AINDA_NAO` |

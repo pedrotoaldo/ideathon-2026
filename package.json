@@ -14,5 +14,8 @@
   },
   "dependencies": {
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4"
   }
 }

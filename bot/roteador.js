@@ -1,6 +1,6 @@
 // Roteador por regra (docs/CONVERSA.md seção 2). O LLM só entra quando nenhuma regra resolve ("ambiguo").
 
-const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra'];
+const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario'];
 
 function normalizarTexto(texto) {
   return String(texto || '')
@@ -18,14 +18,25 @@ function tem(t, lista) {
 }
 
 const MENU = ['menu', 'voltar', 'inicio', 'oi', 'ola', 'bom dia', 'boa tarde', 'boa noite'];
-const HUMANO = ['atendente', 'pessoa', 'falar com alguem', 'humano'];
+const HUMANO = ['atendente', 'pessoa', 'falar com alguem', 'falar com uma pessoa', 'falar com pessoa', 'atendimento humano', 'falar com humano'];
 const APAGAR = ['apagar meus dados', 'apaga meus dados'];
 const GATILHO = ['me avisa quando', 'alerta de preco', 'avisa se passar', 'meus alertas', 'cancelar alerta'];
-const TRIBUTARIO = ['reforma', 'imposto', 'impostos', 'tributo', 'tributos', 'ibs', 'cbs', 'contador', 'nota fiscal', 'contribuinte'];
+const TRIBUTARIO = ['reforma', 'imposto', 'impostos', 'tributo', 'tributos', 'ibs', 'cbs', 'contador', 'nota fiscal', 'contribuinte', 'regime', 'aliquota', 'simples nacional', 'credito presumido', 'lc 214'];
+const AGRO_TECNICO = ['amarelada', 'amarelado', 'amarelando', 'praga', 'pragas', 'doenca', 'doencas', 'lagarta', 'ferrugem', 'fungo', 'mancha', 'manchas', 'adubar', 'adubacao', 'defensivo', 'veneno'];
+// Tentativas de mudar as regras da IAra ou de ler o prompt: nem chegam ao LLM
+const INJECAO = [
+  /\b(ignor\w*|esquec\w*|desconsider\w*|descumpr\w*) (todas |todos )?(as |os |suas |seus |essas |esses |tuas )?(instrucoes|regras|ordens|orientacoes|restricoes|limites|comandos|prompts?)/,
+  /\b(system prompt|prompt do sistema|prompt de sistema|seu prompt|suas instrucoes|jailbreak|modo desenvolvedor|developer mode)\b/,
+  /\b(a partir de agora|de agora em diante|agora) voce (e|eh|sera|vai ser|deve ser) /,
+  /\b(finja|faca de conta|aja como|se passe por|responda como se fosse)\b/,
+  /\b(revele|mostre|repita|me (diga|conte)) (as |suas |seu |o )?(instrucoes|regras|prompt|configuracao)/,
+];
+const IDENTIDADE = [/\b(voce|vc|tu) (e|eh|era) (uma? )?(pessoa|gente|humano|humana|robo|bot|ia|maquina|real)\b/, /\b(e|eh) (uma? )?(pessoa|humano|humana|robo|bot) (de verdade|mesmo|real)\b/];
+const PREVISAO = ['previsao de preco', 'previsao da safra', 'previsao de colheita', 'previsao da colheita', 'previsao', 'vai subir', 'vai cair', 'vai valer', 'quanto vai custar a saca', 'preco no mes que vem', 'preco mes que vem'];
 const CLIMA = ['clima', 'tempo', 'chuva', 'previsao do tempo', 'temperatura'];
 const PAINEL = ['painel', 'grafico', 'ver minha safra'];
 const AUDIO = ['manda em audio', 'responde em audio', 'so texto', 'sem audio'];
-const SAFRA = ['safra', 'conta', 'custo', 'saca', 'sacas', 'colher', 'colheita', 'hectare', 'hectares', 'alqueire', 'alqueires', 'prejuizo', 'lucro', 'e se'];
+const SAFRA = ['safra', 'fazer (a |minha )?conta', 'minha conta', 'conta da', 'custo', 'saca', 'sacas', 'colher', 'colheita', 'hectare', 'hectares', 'alqueire', 'alqueires', 'prejuizo', 'lucro', 'e se'];
 
 const CONFIRMA_FORTES = ['sim', 's', 'isso', 'certo', 'correto', 'ok', 'confirmo', 'exato', 'positivo', 'claro', 'pode'];
 const CONFIRMA_FRACAS = ['mesmo', 'ser', 'esta', 'ta', 'ai', 'tudo', 'e'];
@@ -86,20 +97,26 @@ function numeroSolto(texto) {
 }
 
 // Retorna { intencao, eSe }
-// intencao: menu | apagar | humano | tributario | gatilho | clima | painel | audio | resumo | safra | fluxo | ambiguo
+// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
   const t = normalizarTexto(texto);
   if (MENU.includes(t)) return { intencao: 'menu' };
   if (APAGAR.some((p) => t.includes(p))) return { intencao: 'apagar' };
-  if (t === '3' || tem(t, HUMANO)) return { intencao: 'humano' };
+  if (IDENTIDADE.some((re) => re.test(t))) return { intencao: 'identidade' };
+  if (t === '3' || (t !== 'pessoa' ? tem(t, HUMANO.filter((h) => h !== 'pessoa')) : true)) return { intencao: 'humano' };
+  if (INJECAO.some((re) => re.test(t))) return { intencao: 'injecao' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
   if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
   // "1" seguido de outras linhas (mensagens agrupadas pelo debounce): escolhe a safra e o resto segue como resposta a ela
   const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (linhas.length > 1 && normalizarTexto(linhas[0]) === '1') return { intencao: 'safra', eSe: false, soPedido: false, resto: linhas.slice(1).join('\n') };
+  if (linhas.length > 1 && normalizarTexto(linhas[0]) === '2') return { intencao: 'perfil', resto: linhas.slice(1).join('\n') };
   if (t === '4' || tem(t, GATILHO)) return { intencao: 'gatilho' };
-  if (t === '2' || tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
+  if (t === '2') return { intencao: 'perfil' };
+  if (tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
+  if (tem(t, AGRO_TECNICO)) return { intencao: 'agronomo' };
   if (tem(t, CLIMA)) return { intencao: 'clima' };
+  if (tem(t, PREVISAO)) return { intencao: 'previsao' };
   if (tem(t, PAINEL)) return { intencao: 'painel' };
   if (tem(t, AUDIO)) return { intencao: 'audio' };
   if (t === 'resumo') return { intencao: 'resumo' };
@@ -108,4 +125,9 @@ function rotear(texto, estado) {
   return { intencao: 'ambiguo' };
 }
 
-module.exports = { rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };
+function pedeApagar(texto) {
+  const t = normalizarTexto(texto);
+  return APAGAR.some((p) => t.includes(p));
+}
+
+module.exports = { pedeApagar, rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

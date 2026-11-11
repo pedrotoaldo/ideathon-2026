@@ -55,7 +55,7 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 | Uso | Problema que resolve | Como |
 | --- | --- | --- |
 | Fila (queue) | Muitas mensagens ao mesmo tempo travando o processo único do bot | Fila no Redis com mais de um worker do bot (ou n8n em `EXECUTIONS_MODE=queue`, se a Plus 8 for feita) |
-| Agrupar mensagens seguidas (debounce) | Produtor manda 3 mensagens picadas ("plantei 10 ha" / "de soja" / "gastei 45 mil") e a IAra responde 3 vezes | **Já no Núcleo, em memória** (`bot/debounce.js`: janela de 4 s reiniciada a cada mensagem, máximo de 12 s). O Redis só entra se o bot passar a rodar em mais de um processo: aí a lista de mensagens do número vai para o Redis com TTL |
+| Agrupar mensagens seguidas (debounce) | Produtor manda 3 mensagens picadas ("plantei 10 ha" / "de soja" / "gastei 45 mil") e a IAra responde 3 vezes | **Já no Núcleo, em memória** (`bot/debounce.js`: janela de 2,5 s reiniciada a cada mensagem, máximo de 12 s). O Redis só entra se o bot passar a rodar em mais de um processo: aí a lista de mensagens do número vai para o Redis com TTL |
 | Limite por número | Contagem rápida sem consultar o Postgres a cada mensagem | `INCR` + `EXPIRE` por número e janela |
 | Memória curta da conversa | Contexto recente para o LLM sem montar histórico do banco | Redis com TTL (no n8n: nó "Redis Chat Memory"); o Postgres continua sendo a fonte de verdade |
 | Trava por número | Duas mensagens do mesmo número processadas ao mesmo tempo | `SET numero NX PX 10000` como lock |

@@ -16,14 +16,6 @@ async function config(chave, padrao) {
   return r.rowCount ? r.rows[0].valor : padrao;
 }
 
-async function contarMensagens(numero, janelaMin) {
-  const r = await pool.query(
-    'SELECT count(*)::int AS n FROM mensagem WHERE numero = $1 AND recebida_em > now() - make_interval(mins => $2)',
-    [numero, janelaMin],
-  );
-  return r.rows[0].n;
-}
-
 async function carregarConversa(numero) {
   await pool.query('INSERT INTO conversa (numero) VALUES ($1) ON CONFLICT (numero) DO NOTHING', [numero]);
   const r = await pool.query('SELECT * FROM conversa WHERE numero = $1', [numero]);
@@ -37,22 +29,16 @@ async function salvarEstado(numero, estado, dados) {
   );
 }
 
-// true se já avisou nesta janela; senão marca agora e devolve false
-async function jaAvisouLimite(numero, janelaMin) {
-  const r = await pool.query(
-    `UPDATE conversa SET aviso_limite_em = now()
-       WHERE numero = $1 AND (aviso_limite_em IS NULL OR aviso_limite_em < now() - make_interval(mins => $2))
-     RETURNING numero`,
-    [numero, janelaMin],
-  );
-  return r.rowCount === 0;
-}
-
 async function registrarResposta({ message_id, numero, intencao, texto, usou_llm = false, latencia_ms, versao_prompt = null }) {
   await pool.query(
     'INSERT INTO resposta (message_id, numero, intencao, texto, usou_llm, latencia_ms, versao_prompt) VALUES ($1,$2,$3,$4,$5,$6,$7)',
     [message_id, numero, intencao, texto, usou_llm, latencia_ms, versao_prompt],
   );
+}
+
+// Pedido de atendimento humano (opção 3 do menu, NAO_SEI seguido de "3", alerta respondido com "sim")
+async function registrarEncaminhamento({ numero, motivo, contexto = null }) {
+  await pool.query('INSERT INTO encaminhamento (numero, motivo, contexto) VALUES ($1,$2,$3)', [numero, motivo, contexto ? JSON.stringify(contexto) : null]);
 }
 
 // "Apagar meus dados": remove tudo do número, na ordem das dependências
@@ -73,4 +59,4 @@ async function apagarDados(numero) {
   }
 }
 
-module.exports = { apagarDados, pool, registrarMensagem, config, contarMensagens, carregarConversa, salvarEstado, jaAvisouLimite, registrarResposta };
+module.exports = { apagarDados, pool, registrarMensagem, config, carregarConversa, salvarEstado, registrarResposta, registrarEncaminhamento };

@@ -57,13 +57,14 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Regressão da conversa do celular: `bot/cerebro.test.cjs` (offline) e `npm run regressao` (bot no ar, LLM real)
 
 ## Etapa 3 — Reforma tributária e proteção
-- [ ] Perguntas do perfil (tipo de pessoa, receita, integrado, outra empresa) → `perfilProvavel` → `PERFIL_RESULTADO` + `CHECKLIST`
-- [ ] Dúvida livre → redator tributário (`prompts/agente_sistema.md` + `content/reforma_tributaria_base.md`); tokens `NAO_SEI` e `FORA_ESCOPO` viram textos fixos
-- [ ] Fora de escopo e prompt injection; texto acima de 800 caracteres recusado; LLM falhou → `ERRO_TEMPORARIO` e menu numérico
-- [ ] Encaminhamento humano ("3")
-- [ ] Roteiros C e D
-- [ ] Provedor de chat trocável só pelo `.env` (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`): ao trocar para a OpenAI, rodar os Roteiros A a D de novo
-- [ ] Gerar o QR `https://wa.me/55DDDNUMERO?text=Oi%20IAra`
+- [x] Perguntas do perfil (tipo de pessoa, receita, integrado, outra empresa) → `perfilProvavel` → `PERFIL_RESULTADO` + `CHECKLIST`
+- [x] Dúvida livre → redator tributário (`prompts/agente_sistema.md` + `content/reforma_tributaria_base.md`); tokens `NAO_SEI` e `FORA_ESCOPO` viram textos fixos
+- [x] Fora de escopo e prompt injection; texto acima de 800 caracteres recusado; LLM falhou → `ERRO_TEMPORARIO` e menu numérico
+- [x] Encaminhamento humano ("3")
+- [x] Roteiros C e D
+- [x] Provedor de chat trocável só pelo `.env` (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`): ao trocar para a OpenAI, rodar os Roteiros A a D de novo
+- [x] Gerar o QR `https://wa.me/55DDDNUMERO?text=Oi%20IAra`
+- [x] Extras: limite por número em memória (`bot/limite.js`, não zera com "apagar meus dados"); `DEBOUNCE_MS=2500`; QR gerado por `node scripts/gerar-qr.mjs` em `docs/demo/qr-iara.png`; `qa-conversa` rodado nos Roteiros A a D
 
 ## Etapa 4 — Alerta simulado
 - [ ] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`

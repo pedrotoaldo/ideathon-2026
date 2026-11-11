@@ -7,7 +7,7 @@ const { rotear, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarText
 const { temDadosDeSafra } = require('./extracao');
 
 const ORDEM = ['area_ha', 'custo_total', 'produtividade', 'preco'];
-const FLUXO = ['coletando_safra', 'confirmando_safra'];
+const FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario'];
 const DESCRICAO = { area_ha: 'a área', custo_total: 'o custo total', produtividade: 'as sacas por hectare', preco: 'o preço da saca' };
 
 function clonar(o) {
@@ -39,6 +39,42 @@ function todosExplicados(numeros, ext) {
   const alvo = [ext.area_valor, ext.custo_total, ext.produtividade_valor, ext.preco, ext.gatilho_preco].filter((v) => v != null);
   return numeros.every((n) => alvo.some((v) => perto(v, n)));
 }
+
+// ---------- Perfil tributário (perguntas por regra, sem LLM) ----------
+const ETAPAS_PERFIL = ['tipo', 'receita', 'integrado', 'outra_empresa'];
+const PERGUNTA_PERFIL = {
+  tipo: T.PERGUNTA_TIPO_PESSOA,
+  receita: T.PERGUNTA_RECEITA,
+  integrado: T.PERGUNTA_INTEGRADO,
+  outra_empresa: T.PERGUNTA_OUTRA_EMPRESA,
+};
+
+function lerTipoPessoa(t) {
+  const n = normalizarTexto(t);
+  const pf = /(^| )(pessoa fisica|fisica|pf|cpf|autonomo|individual|sozinho)( |$)/.test(n);
+  const pj = /(^| )(pessoa juridica|juridica|empresa|cnpj|pj|ltda|mei|sociedade)( |$)/.test(n);
+  if (pf === pj) return null;
+  return pf ? 'pessoa_fisica' : 'empresa';
+}
+
+function lerSimNao(t) {
+  const n = normalizarTexto(t);
+  if (!n) return null;
+  if (ehNegacao(t) || /^(nao|n|nunca|nenhuma|nenhum)( |$)/.test(n)) return false;
+  if (ehConfirmacao(t) || /^(sou|tenho|participo|produzo|possuo)( |$)/.test(n)) return true;
+  return null;
+}
+
+// Receita anual aproximada: um valor em reais ("uns 900 mil por ano", "3,6 milhões")
+function lerReceita(t) {
+  const nums = contarNumeros(t);
+  if (nums.length !== 1) return { erro: nums.length ? 'varios' : 'nenhum' };
+  if (nums[0] < 1000) return { erro: 'pequeno' };
+  if (nums[0] > 1e11) return { erro: 'nenhum' };
+  return { valor: nums[0] };
+}
+
+const pareceDuvida = (t) => /[?]/.test(t) || normalizarTexto(t).split(' ').length >= 6;
 
 async function tratar(conversa, texto, deps) {
   const out = { estado: conversa.estado, dados: clonar(conversa.dados), respostas: [], versao_prompt: null };
@@ -229,6 +265,7 @@ async function tratar(conversa, texto, deps) {
 
   // Sem regra que resolva: o LLM decide se é safra ou fora do escopo
   async function ambiguo(t) {
+    if (conversa.estado === 'tributario') { await duvida(t); return; } // conversa sobre a reforma: segue com o redator
     const ext = await chamarLlm(t, null);
     if (temDadosDeSafra(ext) && !ext.fora_do_tema) {
       iniciarSafra();
@@ -241,6 +278,82 @@ async function tratar(conversa, texto, deps) {
     say(T.FORA_ESCOPO, 'fora_escopo', true);
   }
 
+  // ----- Reforma tributária -----
+  function iniciarPerfil() {
+    dados.perfil = { etapa: 'tipo' };
+    dados.nao_sei = null;
+    out.estado = 'perfil_tributario';
+    say(PERGUNTA_PERFIL.tipo, 'tributario');
+  }
+
+  async function duvida(t) {
+    const perfil = dados.perfil ? { ...dados.perfil, etapa: undefined } : null;
+    const x = await deps.tributario(t, perfil);
+    out.versao_prompt = x.versao;
+    say(x.texto, x.tipo === 'fora_escopo' ? 'fora_escopo' : 'tributario', true);
+    if (x.tipo === 'nao_sei') dados.nao_sei = { pergunta: String(t).slice(0, 200) };
+    else if (x.tipo === 'resposta') dados.nao_sei = null;
+    if (x.tipo !== 'fora_escopo') out.estado = 'tributario';
+    return x;
+  }
+
+  async function perfil(t) {
+    const p = (dados.perfil = dados.perfil || { etapa: 'tipo' });
+    const etapa = p.etapa;
+    let ok = false;
+    let dica = '';
+    if (etapa === 'tipo') {
+      const v = lerTipoPessoa(t);
+      if (v) { p.tipo = v; ok = true; }
+    } else if (etapa === 'receita') {
+      const v = lerReceita(t);
+      if (v.valor != null) { p.receita = v.valor; ok = true; } else dica = T.PERFIL_RECEITA_DICA;
+    } else {
+      const v = lerSimNao(t);
+      if (v != null) { p[etapa] = v; ok = true; }
+    }
+    if (!ok) {
+      // Dúvida no meio das perguntas: responde com o redator e volta à pergunta
+      if (pareceDuvida(t)) {
+        const x = await duvida(t);
+        out.estado = 'perfil_tributario';
+        if (x.tipo === 'fora_escopo') out.respostas = [];
+        say(PERGUNTA_PERFIL[etapa], 'tributario');
+        return;
+      }
+      say(T.PERFIL_NAO_ENTENDI + ' ' + (dica ? dica + ' ' : '') + PERGUNTA_PERFIL[etapa], 'tributario');
+      return;
+    }
+    const prox = ETAPAS_PERFIL[ETAPAS_PERFIL.indexOf(etapa) + 1];
+    if (prox) {
+      p.etapa = prox;
+      say(PERGUNTA_PERFIL[prox], 'tributario');
+      return;
+    }
+    const res = S.perfilProvavel({ receita: p.receita, integrado: p.integrado, outra_empresa: p.outra_empresa });
+    delete p.etapa;
+    p.perfil = res.perfil;
+    say([res.texto, ...res.alertas, T.FRASE_PADRAO_TRIBUTARIA].join('\n'), 'tributario');
+    say(T.CHECKLIST, 'tributario');
+    out.estado = 'tributario';
+  }
+
+  function encaminhar() {
+    const tinhaNaoSei = dados.nao_sei && dados.nao_sei.pergunta;
+    out.acao = 'encaminhar';
+    out.motivo = tinhaNaoSei ? 'sem_resposta_segura' : 'pedido_usuario';
+    out.contexto = {
+      estado: conversa.estado,
+      tem_conta: !!dados.ultimo_calculo,
+      perfil: dados.perfil && dados.perfil.perfil ? dados.perfil.perfil : null,
+      pergunta: tinhaNaoSei ? dados.nao_sei.pergunta : null,
+    };
+    dados.nao_sei = null;
+    delete dados.coleta;
+    out.estado = 'menu';
+    say(T.ENCAMINHAMENTO, 'humano');
+  }
+
   const r = rotear(texto, conversa.estado);
 
   if (r.intencao === 'menu') {
@@ -250,10 +363,26 @@ async function tratar(conversa, texto, deps) {
   } else if (r.intencao === 'apagar') {
     out.acao = 'apagar'; // quem apaga o banco é o processar.js
     say(T.APAGADO, 'apagar');
-  } else if (['humano', 'tributario', 'gatilho', 'clima', 'painel', 'audio', 'resumo'].includes(r.intencao)) {
-    say(T.EM_BREVE, r.intencao); // entram nas Etapas 3 e 4 e nas Fases Plus
+  } else if (r.intencao === 'humano') {
+    encaminhar();
+  } else if (r.intencao === 'injecao') {
+    say(T.FORA_ESCOPO, 'fora_escopo'); // não chega ao LLM; o estado da conversa não muda
+  } else if (r.intencao === 'identidade') {
+    say(T.IDENTIDADE, 'identidade');
+  } else if (r.intencao === 'previsao') {
+    say(T.PREVISAO, 'previsao');
+  } else if (r.intencao === 'agronomo') {
+    say(T.AGRONOMO, 'agronomo');
+  } else if (r.intencao === 'perfil') {
+    iniciarPerfil();
+    if (r.resto) await perfil(r.resto);
+  } else if (r.intencao === 'tributario') {
+    await duvida(texto);
+  } else if (['gatilho', 'clima', 'painel', 'audio', 'resumo'].includes(r.intencao)) {
+    say(T.EM_BREVE, r.intencao); // entram na Etapa 4 e nas Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);
+    else if (conversa.estado === 'perfil_tributario') await perfil(texto);
     else await confirmar(texto, r.eSe);
   } else if (r.intencao === 'safra') {
     if (r.eSe) {
