@@ -209,6 +209,12 @@ Os textos abaixo marcados com (Plus) só entram nas Fases Plus.
 > Perfil informado: {tipo_pessoa}, receita aprox. R$ {receita}, integrado: {integrado}, outra empresa: {outra_empresa}.
 > Perfil provável: {perfil_curto}. Validar com o contador.
 
+Se faltar uma parte, ela é trocada por uma linha que diz como completar, e o resto aparece normalmente:
+> Safra: ainda não fiz a sua conta. Escreva "1" para fazer.
+> Perfil: ainda não coletei. Escreva "2" para eu perguntar.
+
+Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a receita ficar a menos de 20% do limite, o alerta de `perfilProvavel` entra depois do perfil provável. Os números vêm de `montarResumo` em `src/calc/safra.cjs`.
+
 ## 2. Intenções (roteador)
 | Intenção | Gatilhos por regra (antes do LLM) |
 | --- | --- |

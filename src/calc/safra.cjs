@@ -221,6 +221,79 @@ function perfilProvavel(p, limite = 3600000) {
   return { perfil, texto, alertas };
 }
 
+// ---------- Resumo para levar ao contador ----------
+
+const PERFIL_CURTO = {
+  contribuinte: 'contribuinte do IBS/CBS (receita acima do limite)',
+  nao_contribuinte: 'não contribuinte, com possibilidade de optar pelo regime regular',
+  integrado_nao_contribuinte: 'integrado, não contribuinte (salvo opção pelo regime regular)',
+};
+
+function simNao(v) {
+  return v ? 'sim' : 'não';
+}
+
+// safra: dados.safra (precisa estar completa); perfil: dados.perfil com { tipo, receita, integrado, outra_empresa }.
+// Mostra só o que existe e diz como completar o resto. Todo número sai daqui.
+function montarResumo(safra, perfil, limite = 3600000) {
+  const linhas = ['Resumo Agro na Medida'];
+  const temSafra = !!safra && camposFaltantes(safra).length === 0;
+  const temPerfil = !!perfil && perfil.receita != null && perfil.integrado != null && perfil.outra_empresa != null;
+
+  if (temSafra) {
+    const calc = calcularSafra(safra);
+    const e = calc.entrada;
+    const cultura = safra.cultura ? ' de ' + safra.cultura : '';
+    linhas.push(
+      'Safra: ' + formatarDecimal(e.area_ha) + ' ha' + cultura + ', custo ' + formatarReais(e.custo_total) + ', ' + formatarDecimal(e.produtividade) + ' sc/ha, saca ' + formatarReais(e.preco) + '.',
+      'Equilíbrio: ' + formatarDecimal(calc.produtividade_minima) + ' sc/ha ou ' + formatarReais(calc.preco_equilibrio) + '/saca. Resultado esperado: ' + textoResultado(calc.cenarios.esperado.resultado) + '.',
+    );
+  } else {
+    linhas.push('Safra: ainda não fiz a sua conta. Escreva "1" para fazer.');
+  }
+
+  if (temPerfil) {
+    const p = perfilProvavel({ receita: perfil.receita, integrado: perfil.integrado, outra_empresa: perfil.outra_empresa }, limite);
+    const tipo = perfil.tipo === 'empresa' ? 'empresa rural' : perfil.tipo === 'pessoa_fisica' ? 'pessoa física' : 'tipo não informado';
+    linhas.push(
+      'Perfil informado: ' + tipo + ', receita aprox. ' + formatarReais(perfil.receita) + ', integrado: ' + simNao(perfil.integrado) + ', outra empresa: ' + simNao(perfil.outra_empresa) + '.',
+      'Perfil provável: ' + PERFIL_CURTO[p.perfil] + '.',
+    );
+    for (const a of p.alertas) linhas.push(a);
+  } else {
+    linhas.push('Perfil: ainda não coletei. Escreva "2" para eu perguntar.');
+  }
+
+  if (temSafra || temPerfil) linhas.push('Validar com o contador.');
+  return linhas.join('\n');
+}
+
+// ---------- Cobertura de contratos (sem ligação com o bot ainda) ----------
+// Quanto do custo já está coberto por venda a preço fixo, quantas sacas ficam expostas ao preço do mercado
+// e se a produção esperada cumpre os contratos. Não recomenda vender nem fixar preço.
+function calcularCobertura({ custo_total, sacas_fixadas, preco_fixado, producao_sacas }) {
+  const ok = (v) => typeof v === 'number' && Number.isFinite(v);
+  if (!ok(custo_total) || custo_total <= 0) throw new Error('custo_total inválido');
+  if (!ok(sacas_fixadas) || sacas_fixadas < 0) throw new Error('sacas_fixadas inválido');
+  if (!ok(preco_fixado) || preco_fixado < 0) throw new Error('preco_fixado inválido');
+  if (!ok(producao_sacas) || producao_sacas < 0) throw new Error('producao_sacas inválido');
+  const receita_fixada = sacas_fixadas * preco_fixado;
+  const custo_coberto = Math.min(receita_fixada, custo_total);
+  const custo_descoberto = custo_total - custo_coberto;
+  const sacas_expostas = Math.max(0, producao_sacas - sacas_fixadas);
+  return {
+    receita_fixada: round2(receita_fixada),
+    cobertura_pct: round1((custo_coberto / custo_total) * 100),
+    custo_coberto: round2(custo_coberto),
+    custo_descoberto: round2(custo_descoberto),
+    sacas_expostas: round1(sacas_expostas),
+    sacas_faltantes: round1(Math.max(0, sacas_fixadas - producao_sacas)), // contrato maior que a produção
+    cumpre_contratos: producao_sacas >= sacas_fixadas,
+    // preço que as sacas expostas precisariam alcançar para cobrir o custo restante (null se não há sacas expostas)
+    preco_equilibrio_exposto: sacas_expostas > 0 ? round2(custo_descoberto / sacas_expostas) : null,
+  };
+}
+
 // ---------- Resposta falada (áudio da IAra) ----------
 // Versão curta para virar áudio: 2 a 3 frases, sem listas. O texto completo vai junto por escrito.
 function montarResumoFalado(calc) {
@@ -274,7 +347,7 @@ const API = {
   round2, converterAreaParaHa, converterProdutividadeParaScHa, mesclarExtracao,
   camposFaltantes, camposForaDaFaixa, calcularSafra, calcularESe,
   formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao, avisoFaixaCultura, normalizarCultura, FAIXAS_CULTURA_PADRAO,
-  perfilProvavel, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
+  perfilProvavel, montarResumo, calcularCobertura, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = API;

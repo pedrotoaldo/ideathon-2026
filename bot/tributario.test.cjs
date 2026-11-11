@@ -201,3 +201,21 @@ test('identidade, previsão e apagar: regras do QA', async () => {
   assert.equal(rotear('falar com uma pessoa', 'menu').intencao, 'humano');
   assert.equal(rotear('pessoa física', 'perfil_tributario').intencao, 'fluxo');
 });
+
+test('resumo: com safra e perfil, só com safra, e sem nada (não muda o estado nem chama LLM)', async () => {
+  const safra = { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 };
+  const perfil = { tipo: 'pessoa_fisica', receita: 900000, integrado: false, outra_empresa: false, perfil: 'nao_contribuinte' };
+  let p = await passo({ estado: 'tributario', dados: { safra, perfil } }, 'resumo');
+  assert.match(p.texto, /^Resumo Agro na Medida/);
+  assert.match(p.texto, /custo por saca|R\$ 75\/saca/);
+  assert.match(p.texto, /Perfil provável: não contribuinte/);
+  assert.match(p.texto, /Validar com o contador\.$/);
+  assert.equal(p.r.estado, 'tributario');
+  p = await passo({ estado: 'resultado_safra', dados: { safra } }, 'resumo');
+  assert.match(p.texto, /Safra: 10 ha de soja/);
+  assert.match(p.texto, /Escreva "2"/);
+  assert.equal(p.r.estado, 'resultado_safra');
+  p = await passo({ estado: 'menu', dados: {} }, 'resumo');
+  assert.match(p.texto, /Escreva "1"[\s\S]*Escreva "2"/);
+  assert.doesNotMatch(p.texto, /EM_BREVE|ainda não está pronta/);
+});

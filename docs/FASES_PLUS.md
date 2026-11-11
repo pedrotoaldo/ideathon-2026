@@ -11,9 +11,12 @@ O protótipo do Ideathon é o **Núcleo** (`docs/PLAN.md`). Tudo aqui ficou de f
 | Plus 3 | Webapp: painel da demo + admin de cotação | Cortado (painel vira slide) | 1 h 30 | Plus 2 para o admin |
 | Plus 4 | Webapp: painel do produtor | Cortado (o vídeo de demonstração mostra a ideia) | 1 h | Plus 3 |
 | Plus 5 | Redis: fila, agrupamento entre processos, limites e memória curta | Não precisa (Postgres dá conta; o agrupamento em memória já está no Núcleo) | 1 a 2 h | Núcleo |
-| Plus 6 | Extras: resumo, clima, apagar dados | Cortado | 1 h | Núcleo |
+| Plus 6 | Extras: clima (resumo e apagar dados já estão no Núcleo) | Cortado | 1 h | Núcleo |
 | Plus 7 | Piloto: Cloud API oficial, RAG, cooperativa, templates | Citado no pitch como próximo passo | dias | Plus 2 e validação |
 | Plus 8 | Migrar a orquestração do bot (`bot/`) para o n8n | Não: o Núcleo roda no bot em Node | 3 a 4 h | Núcleo |
+| Plus 9 | Cenários de preço e cobertura de contratos | Não (`calcularCobertura` já existe em `safra.cjs`, sem ligação com o bot) | 2 h | Núcleo |
+| Plus 10 | Oferta de serviços da cooperativa | Não | dias | Plus 7 |
+| Plus 11 | Comparação regional (investimento × rentabilidade) | Não | dias | Plus 7 |
 
 ---
 
@@ -65,7 +68,7 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 **Ordem sugerida:** o debounce em memória já está no Núcleo; falta, se o volume crescer, a fila entre processos (e levar o debounce para o Redis junto).
 
 ## Plus 6 — Extras (SPEC F14 a F16)
-- "resumo": junta safra, perfil e checklist numa mensagem para encaminhar ao contador.
+- ~~"resumo"~~ — **já no Núcleo** (`montarResumo`): junta safra e perfil numa mensagem para levar ao contador.
 - Clima via Open-Meteo (sem chave): chuva e temperatura dos próximos dias, sempre como informação de fonte, nunca previsão de colheita.
 - "apagar meus dados": apaga as linhas do número (cascata nas tabelas Plus).
 
@@ -75,9 +78,27 @@ No Núcleo, o alerta é simulado: o pedido fica em `conversa.dados.alerta` e a e
 - Cotação vinda da cooperativa parceira; cadastro do cooperado; painel do gestor por perfil tributário.
 - Lembretes do calendário da safra (seguro, contratos, Plano Safra) e boletim semanal ativo.
 - LGPD completa: termo versionado, retenção e exportação de dados.
+- **Integração com o app do produtor e com o CRM da cooperativa:** comparar o que o produtor informa à IAra (área, custo, produtividade, receita, perfil) com o que a cooperativa registra (cadastro, entregas, contratos, notas). Divergência vira aviso ao técnico ou ao produtor para conferir, nunca correção automática. Exige consentimento do produtor (LGPD) e identificação do cooperado.
 
 ## Plus 8 — Migrar a orquestração para o n8n
 - O Núcleo roda no bot Node (`bot/`). Esta fase recria o fluxo no n8n, se a equipe preferir fluxos visuais.
 - O workflow principal `agro-zap-entrada` espelha o pipeline de `docs/ARCHITECTURE.md` seção 3, com um Code node "Calcular safra" colado de `n8n/code-nodes/calcular_safra.js` (`npm run build:n8n`).
 - Variáveis: `N8N_WEBHOOK_URL` no `.env`, webhook da instância apontando para o n8n. Exportar os workflows em `n8n/workflows/`.
 - Aceite: Roteiros A a D e E-simulado passam sem usar `bot/`.
+
+## Plus 9 — Cenários de preço e cobertura de contratos
+- **Cenários de preço:** três cenários sobre o preço da saca, **baixista, atual e altista**, com variação pequena (por exemplo ±5% e ±10%, configurável em `config`). Mostrar **o pior primeiro**, para o produtor ver o risco antes da oportunidade. É simulação do que acontece com a conta se o preço for esse; nunca previsão de preço, e sem dizer qual cenário vai acontecer.
+- **Cobertura de contratos:** `calcularCobertura({ custo_total, sacas_fixadas, preco_fixado, producao_sacas })` em `src/calc/safra.cjs` (já pronta e testada, sem ligação com o bot). Devolve quanto do custo já está coberto por venda a preço fixo, quantas sacas ficam expostas ao mercado, o preço que elas precisariam alcançar para cobrir o resto e se a produção esperada cumpre os contratos.
+- Passos: perguntar ao produtor as sacas já vendidas a preço fixo e o preço; texto novo em `docs/CONVERSA.md` (`bot/textos.js` junto); intenção "contratos" no roteador; Roteiro novo. Regras: a IAra mostra a situação e **não recomenda fixar, vender ou segurar** (regra 3 do CLAUDE.md).
+- Aceite: com custo R$ 45.000, 300 sacas a R$ 100 e produção de 600 sacas, a IAra informa 66,7% do custo coberto, 300 sacas expostas e equilíbrio de R$ 50 nas expostas.
+
+## Plus 10 — Oferta de serviços da cooperativa
+- Mostrar serviços da cooperativa relacionados ao que o produtor falou: **seguro, proteção de preço, insumos, financeiro e diesel**.
+- **Sempre opcional e sem recomendar decisão:** a IAra apresenta que o serviço existe e como falar com a cooperativa (encaminhamento), sem dizer que o produtor deve contratar, comprar ou travar preço. Sem condição comercial inventada: só o que a cooperativa cadastrar.
+- Passos: catálogo de serviços por cooperativa (tabela nova em `db/schema_plus.sql`), texto fixo de oferta com opção de recusar ("não, obrigado" encerra e não repete), registro do interesse em `encaminhamento` (motivo `interesse_servico`), `revisor-guardrails` sobre os textos.
+- Depende da Plus 7 (cooperativa parceira e cadastro do cooperado).
+
+## Plus 11 — Comparação regional (investimento × rentabilidade)
+- Comparar o produtor com a região (Mandaguari e vizinhos) em **quadrantes: investimento por hectare × rentabilidade**, para ele ver onde está em relação a quem planta o mesmo.
+- Dados agregados e anônimos, só com consentimento; mínimo de produtores por grupo para não identificar ninguém. Sem dizer "invista mais" ou "gaste menos": mostra a posição e deixa a decisão com o produtor e o técnico.
+- Depende da Plus 7 (base de cooperados) e do painel do produtor (Plus 4) para exibir o gráfico dos quadrantes.

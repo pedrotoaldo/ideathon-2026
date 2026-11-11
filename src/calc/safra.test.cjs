@@ -165,3 +165,79 @@ test('confirmação com aviso exige "sim, está certo"', () => {
   const t = s.montarConfirmacao({ cultura: 'soja', area_ha: 10, custo_total: 40000, produtividade: 2, preco: 60 }, 'Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo?');
   assert.match(t, /Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Está certo\? Se estiver, responda "sim, está certo"/);
 });
+
+// ---------- montarResumo ----------
+test('montarResumo: safra e perfil completos', () => {
+  const t = s.montarResumo(
+    { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 },
+    { tipo: 'pessoa_fisica', receita: 900000, integrado: false, outra_empresa: false },
+  );
+  assert.equal(t, [
+    'Resumo Agro na Medida',
+    'Safra: 10 ha de soja, custo R$ 45.000, 60 sc/ha, saca R$ 100.',
+    'Equilíbrio: 45 sc/ha ou R$ 75/saca. Resultado esperado: sobram R$ 15.000.',
+    'Perfil informado: pessoa física, receita aprox. R$ 900.000, integrado: não, outra empresa: não.',
+    'Perfil provável: não contribuinte, com possibilidade de optar pelo regime regular.',
+    'Validar com o contador.',
+  ].join('\n'));
+});
+
+test('montarResumo: só a safra, só o perfil e nenhum dos dois', () => {
+  const safra = { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60, preco: 100 };
+  const perfil = { tipo: 'empresa', receita: 3000000, integrado: false, outra_empresa: true };
+  const a = s.montarResumo(safra, null);
+  assert.match(a, /Safra: 10 ha de soja/);
+  assert.match(a, /Perfil: ainda não coletei\. Escreva "2"/);
+  assert.match(a, /Validar com o contador\.$/);
+  const b = s.montarResumo({ cultura: 'soja', area_ha: 10 }, perfil); // safra incompleta
+  assert.match(b, /Safra: ainda não fiz a sua conta\. Escreva "1"/);
+  assert.match(b, /empresa rural, receita aprox\. R\$ 3\.000\.000, integrado: não, outra empresa: sim/);
+  assert.match(b, /perto do limite/); // alerta do perfilProvavel
+  const c = s.montarResumo(undefined, undefined);
+  assert.equal(c, 'Resumo Agro na Medida\nSafra: ainda não fiz a sua conta. Escreva "1" para fazer.\nPerfil: ainda não coletei. Escreva "2" para eu perguntar.');
+});
+
+test('montarResumo: perfil contribuinte e integrado', () => {
+  assert.match(s.montarResumo(null, { tipo: 'empresa', receita: 4000000, integrado: false, outra_empresa: false }), /Perfil provável: contribuinte do IBS\/CBS/);
+  assert.match(s.montarResumo(null, { tipo: 'pessoa_fisica', receita: 500000, integrado: true, outra_empresa: false }), /integrado, não contribuinte/);
+});
+
+// ---------- calcularCobertura ----------
+test('calcularCobertura: parte do custo coberta, resto exposto', () => {
+  const c = s.calcularCobertura({ custo_total: 45000, sacas_fixadas: 300, preco_fixado: 100, producao_sacas: 600 });
+  assert.equal(c.receita_fixada, 30000);
+  assert.equal(c.cobertura_pct, 66.7);
+  assert.equal(c.custo_coberto, 30000);
+  assert.equal(c.custo_descoberto, 15000);
+  assert.equal(c.sacas_expostas, 300);
+  assert.equal(c.preco_equilibrio_exposto, 50);
+  assert.equal(c.cumpre_contratos, true);
+  assert.equal(c.sacas_faltantes, 0);
+});
+
+test('calcularCobertura: custo 100% coberto (cobertura limitada a 100%)', () => {
+  const c = s.calcularCobertura({ custo_total: 45000, sacas_fixadas: 600, preco_fixado: 100, producao_sacas: 600 });
+  assert.equal(c.cobertura_pct, 100);
+  assert.equal(c.custo_descoberto, 0);
+  assert.equal(c.sacas_expostas, 0);
+  assert.equal(c.preco_equilibrio_exposto, null);
+  assert.equal(c.cumpre_contratos, true);
+});
+
+test('calcularCobertura: contrato maior que a produção não é cumprido', () => {
+  const c = s.calcularCobertura({ custo_total: 45000, sacas_fixadas: 700, preco_fixado: 80, producao_sacas: 600 });
+  assert.equal(c.cumpre_contratos, false);
+  assert.equal(c.sacas_faltantes, 100);
+  assert.equal(c.sacas_expostas, 0);
+  assert.equal(c.cobertura_pct, 100); // 56.000 > 45.000
+});
+
+test('calcularCobertura: sem venda fixada e entradas inválidas', () => {
+  const c = s.calcularCobertura({ custo_total: 45000, sacas_fixadas: 0, preco_fixado: 0, producao_sacas: 600 });
+  assert.equal(c.cobertura_pct, 0);
+  assert.equal(c.sacas_expostas, 600);
+  assert.equal(c.preco_equilibrio_exposto, 75);
+  assert.throws(() => s.calcularCobertura({ custo_total: 0, sacas_fixadas: 1, preco_fixado: 1, producao_sacas: 1 }));
+  assert.throws(() => s.calcularCobertura({ custo_total: 100, sacas_fixadas: -1, preco_fixado: 1, producao_sacas: 1 }));
+  assert.throws(() => s.calcularCobertura({ custo_total: 100, sacas_fixadas: 1, preco_fixado: 1, producao_sacas: NaN }));
+});

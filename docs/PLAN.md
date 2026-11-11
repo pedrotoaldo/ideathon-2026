@@ -66,6 +66,11 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Gerar o QR `https://wa.me/55DDDNUMERO?text=Oi%20IAra`
 - [x] Extras: limite por número em memória (`bot/limite.js`, não zera com "apagar meus dados"); `DEBOUNCE_MS=2500`; QR gerado por `node scripts/gerar-qr.mjs` em `docs/demo/qr-iara.png`; `qa-conversa` rodado nos Roteiros A a D
 
+## Extra depois da Etapa 3 (pedido do usuário)
+- [x] Comando "resumo" (`montarResumo` em `safra.cjs`, com teste): mostra safra e/ou perfil e diz como completar o que falta
+- [x] `calcularCobertura` em `safra.cjs`, com testes, **sem ligação com o bot** (Plus 9)
+- [x] Plus 9, 10 e 11 descritas em `docs/FASES_PLUS.md`; Plus 7 ganhou a integração com app e CRM
+
 ## Etapa 4 — Alerta simulado
 - [ ] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`
 - [ ] `node scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`): busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → marca `ativo: false` antes de enviar (aviso único) → envia pela Evolution e põe a conversa em `aguardando_resposta_alerta`

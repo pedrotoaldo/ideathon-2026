@@ -87,6 +87,24 @@ const cenarios = [
     ],
   },
   {
+    nome: 'Resumo: só a safra, depois safra e perfil',
+    numero: '5500900000011',
+    passos: [
+      ['oi', [/Oi! Eu sou a IAra/]],
+      ['resumo', [/Safra: ainda não fiz a sua conta/, /Perfil: ainda não coletei/]],
+      ['1', [/Vamos fazer a conta/]],
+      ['10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100', [/Está certo/]],
+      ['sim', [/Pela sua conta/]],
+      ['resumo', [/Safra: 10 ha de soja, custo R\$ 45\.000, 60 sc\/ha, saca R\$ 100\./, /Equilíbrio: 45 sc\/ha ou R\$ 75\/saca. Resultado esperado: sobram R\$ 15\.000/, /Perfil: ainda não coletei/]],
+      ['2', [/pessoa física ou tem empresa/]],
+      ['pessoa física', [/receita bruta/]],
+      ['uns 900 mil por ano', [/integrado/]],
+      ['não', [/outra empresa/]],
+      ['não', [/Para levar ao contador/]],
+      ['resumo', [/Perfil informado: pessoa física, receita aprox. R\$ 900\.000, integrado: não, outra empresa: não/, /Perfil provável: não contribuinte/, /Validar com o contador\.$/]],
+    ],
+  },
+  {
     nome: 'Apagar meus dados',
     numero: '5500900000005',
     passos: [

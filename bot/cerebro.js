@@ -378,8 +378,11 @@ async function tratar(conversa, texto, deps) {
     if (r.resto) await perfil(r.resto);
   } else if (r.intencao === 'tributario') {
     await duvida(texto);
-  } else if (['gatilho', 'clima', 'painel', 'audio', 'resumo'].includes(r.intencao)) {
-    say(T.EM_BREVE, r.intencao); // entram na Etapa 4 e nas Fases Plus
+  } else if (r.intencao === 'resumo') {
+    // Mostra só o que existe (safra e/ou perfil) e diz como completar; não muda o estado da conversa
+    say(S.montarResumo(dados.safra, dados.perfil), 'resumo');
+  } else if (['gatilho', 'clima', 'painel', 'audio'].includes(r.intencao)) {
+    say(T.EM_BREVE, r.intencao); // entram na Etapa 4, na Etapa 5 e nas Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);
     else if (conversa.estado === 'perfil_tributario') await perfil(texto);
