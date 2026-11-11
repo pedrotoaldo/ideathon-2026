@@ -418,3 +418,69 @@ test('REGRESSÃO áudio: com aviso de sanidade continua exigindo "sim, está cer
   for (const t of ['Fim.', 'Vai', 'Isso.', 'Sim']) assert.equal((await passo(base(), t, llm())).r.estado, 'confirmando_safra', t);
   for (const t of ['Dá certinho, vai', 'Sim, está certo', 'Correto']) assert.equal((await passo(base(), t, llm())).r.estado, 'resultado_safra', t);
 });
+
+// ---------- Dúvida sobre o campo, "não sei" e referência de preço ----------
+test('dúvida sobre o campo explica e repete a pergunta, sem LLM (bug "qual o tamanho da área")', async () => {
+  const extrair = llm();
+  const base = (campo, safra = {}) => ({ estado: 'coletando_safra', dados: { safra, coleta: { campo_pedido: campo } } });
+  let p = await passo(base('area_ha'), 'qual o tamanho da área', extrair);
+  assert.match(p.texto, /^É o tamanho da lavoura dessa safra\. Pode ser em hectares ou alqueires\.\nQual o tamanho da área\?/);
+  assert.equal(p.r.estado, 'coletando_safra');
+  assert.equal(p.r.dados.coleta.campo_pedido, 'area_ha');
+  p = await passo(base('custo_total'), 'como assim?', extrair);
+  assert.match(p.texto, /^É tudo o que você vai gastar na safra: semente, adubo, defensivo, máquina, frete\. Pode ser aproximado\./);
+  assert.match(p.texto, /Quanto vai gastar no total/);
+  p = await passo(base('produtividade'), 'o que é isso?', extrair);
+  assert.match(p.texto, /^É quanto você espera colher em cada hectare/);
+  p = await passo(base('preco', { cultura: 'cafe' }), 'que preço?', extrair);
+  assert.match(p.texto, /^É o preço que você quer usar na conta: o de hoje ou o que espera vender\./);
+  assert.doesNotMatch(p.texto, /usa esse/); // cultura sem referência só pergunta
+  assert.equal(extrair.chamadas.length, 0);
+});
+
+test('"não sei", "não lembro", "sei lá": pode ser aproximado + dica do campo, e repete a pergunta', async () => {
+  const extrair = llm();
+  for (const t of ['não sei', 'Não lembro.', 'sei lá', 'ah, não sei não']) {
+    const p = await passo({ estado: 'coletando_safra', dados: { safra: { area_ha: 10 }, coleta: { campo_pedido: 'custo_total' } } }, t, extrair);
+    assert.match(p.texto, /pode ser aproximado\. Some semente, adubo, defensivo e operação/, t);
+    assert.match(p.texto, /Quanto vai gastar no total/, t);
+    assert.equal(p.r.estado, 'coletando_safra', t);
+  }
+  const a = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } }, 'não sei', extrair);
+  assert.match(a.texto, /2,42 hectares/);
+  assert.equal(extrair.chamadas.length, 0);
+  // dado real com número não é tomado como dúvida
+  const n = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } }, '10 hectares', llm({ area_valor: 10, area_unidade: 'ha' }));
+  assert.doesNotMatch(n.texto, /É o tamanho da lavoura/);
+});
+
+test('preço: oferece a referência da demo para soja, milho e trigo; "usa esse", "pode usar", "esse mesmo" e "sim" aceitam', async () => {
+  const cotacoes = require('./cotacoes-demo');
+  const base = { cultura: 'soja', area_ha: 10, custo_total: 45000, produtividade: 60 };
+  let p = await passo({ estado: 'coletando_safra', dados: { safra: { ...base }, coleta: {} } }, 'x', llm({ produtividade_valor: 60 }));
+  // pergunta do preço vem logo depois de coletar a produtividade
+  p = await passo({ estado: 'coletando_safra', dados: { safra: { cultura: 'soja', area_ha: 10, custo_total: 45000 }, coleta: { campo_pedido: 'produtividade' } } }, '60', llm());
+  assert.match(p.texto, /Qual preço da saca/);
+  assert.ok(p.texto.includes(`Se quiser, uso a referência de hoje para soja: R$ ${cotacoes.PRODUTOS.soja.valor} (valor ilustrativo da demonstração). É só responder "usa esse".`));
+  const ofertada = p.conv;
+  for (const t of ['usa esse', 'Pode usar', 'esse mesmo', 'Sim']) {
+    const q = await passo(ofertada, t, llm());
+    assert.equal(q.r.estado, 'confirmando_safra', t);
+    assert.equal(q.conv.dados.safra.preco, cotacoes.PRODUTOS.soja.valor, t);
+  }
+  // explicar o preço cita a opção; número digitado vale no lugar da referência
+  const e = await passo(ofertada, 'o que é o preço?', llm());
+  assert.match(e.texto, /^É o preço que você quer usar na conta/);
+  assert.match(e.texto, /usa esse/);
+  assert.equal((await passo(ofertada, '110', llm())).conv.dados.safra.preco, 110);
+  // milho e trigo também; café não
+  for (const [c, v] of [['milho', 68], ['trigo', 82]]) {
+    const m = await passo({ estado: 'coletando_safra', dados: { safra: { cultura: c, area_ha: 10, custo_total: 45000 }, coleta: { campo_pedido: 'produtividade' } } }, '60', llm());
+    assert.ok(m.texto.includes(`para ${c}: R$ ${v} (`));
+  }
+  const cafe = await passo({ estado: 'coletando_safra', dados: { safra: { cultura: 'cafe', area_ha: 10, custo_total: 45000 }, coleta: { campo_pedido: 'produtividade' } } }, '60', llm());
+  assert.doesNotMatch(cafe.texto, /usa esse/);
+  // sem oferta, "usa esse" não preenche preço
+  const sem = await passo(cafe.conv, 'usa esse', llm());
+  assert.equal(sem.conv.dados.safra.preco, undefined);
+});

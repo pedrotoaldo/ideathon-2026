@@ -97,7 +97,29 @@ function lerCulturaResposta(t) {
   return null;
 }
 
-const pareceDuvida = (t) => /[?]/.test(t) || normalizarTexto(t).split(' ').length >= 6;
+// Dúvida sobre um campo da safra ou "não sei", sem número na mensagem. Devolve { tipo, campo } ou null.
+const CAMPOS_SAFRA = ['area_ha', 'custo_total', 'produtividade', 'preco'];
+const ACEITA_REFERENCIA = /^(usa esse|pode usar|esse mesmo|usa esse mesmo|pode usar esse|pode usar esse mesmo)$/;
+const NAO_SEI =/(^| )(nao sei|nao lembro|sei la|sei nao|nao tenho ideia|nao faco ideia)( |$)/;
+const PERGUNTA_DE_CAMPO = /^(qual|quais|como|o que|oque|que |quanto|nao entendi|nao entendo|explica|explique|me explica)|\?/;
+function campoCitado(n) {
+  if (/(^| )(preco|valor)( |$)/.test(n)) return 'preco';
+  if (/(sacas? por|por hectare|colher|colheita|produtividade|rende|render)/.test(n)) return 'produtividade';
+  if (/(custo|gast|investi)/.test(n)) return 'custo_total';
+  if (/(area|tamanho|hectare|alqueire|lavoura|terra)/.test(n)) return 'area_ha';
+  return null;
+}
+function duvidaDeCampo(t, campoPedido) {
+  const n = normalizarTexto(t);
+  if (!n || /\d/.test(n) || n.split(' ').length > 8) return null;
+  const pedido = CAMPOS_SAFRA.includes(campoPedido) ? campoPedido : null;
+  if (NAO_SEI.test(n)) return pedido ? { tipo: 'nao_sei', campo: pedido } : null;
+  if (!PERGUNTA_DE_CAMPO.test(String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))) return null;
+  const campo = campoCitado(n) || pedido;
+  return campo ? { tipo: 'explica', campo, pedido } : null;
+}
+
+const pareceDuvida =(t) => /[?]/.test(t) || normalizarTexto(t).split(' ').length >= 6;
 
 async function tratar(conversa, texto, deps) {
   const out = { estado: conversa.estado, dados: clonar(conversa.dados), respostas: [], versao_prompt: null };
@@ -111,9 +133,21 @@ async function tratar(conversa, texto, deps) {
     return { ...semDados(), ...ext };
   }
 
+  // Referência ilustrativa (bot/cotacoes-demo.js) só para soja, milho e trigo; outra cultura só pergunta
+  function referenciaPreco() {
+    const c = normalizarTexto((dados.safra || {}).cultura || '');
+    const p = ['soja', 'milho', 'trigo'].includes(c) ? cotacoesDemo.PRODUTOS[c] : null;
+    return p ? { cultura: p.nome, valor: p.valor } : null;
+  }
+
   function perguntar(campo, prefixo = '') {
-    dados.coleta = { ...(dados.coleta || {}), campo_pedido: campo };
-    say((prefixo ? prefixo + '\n' : '') + T.PERGUNTA_CAMPO[campo], 'safra', false);
+    const ref = campo === 'preco' ? referenciaPreco() : null;
+    const coleta = { ...(dados.coleta || {}), campo_pedido: campo };
+    delete coleta.oferta_preco;
+    if (ref) coleta.oferta_preco = ref.valor;
+    dados.coleta = coleta;
+    const oferta = ref ? '\n' + T.OFERTA_PRECO_REFERENCIA.replace('{cultura}', ref.cultura).replace('{valor}', S.formatarDecimal(ref.valor)) : '';
+    say((prefixo ? prefixo + '\n' : '') + T.PERGUNTA_CAMPO[campo] + oferta, 'safra', false);
   }
 
   function iniciarSafra() {
@@ -234,6 +268,20 @@ async function tratar(conversa, texto, deps) {
     }
 
     const campo = coleta.campo_pedido || null;
+
+    // "usa esse": aceita a referência de preço oferecida na pergunta do preço
+    if (campo === 'preco' && coleta.oferta_preco != null && (ehConfirmacao(t) || ACEITA_REFERENCIA.test(normalizarTexto(t)))) {
+      aplicar(extDoCampo('preco', coleta.oferta_preco));
+      return;
+    }
+
+    // Dúvida sobre o campo ("qual o tamanho da área?") ou "não sei": explica/dá a dica e repete a pergunta, sem LLM
+    const duvida = duvidaDeCampo(t, campo);
+    if (duvida) {
+      const texto = (duvida.tipo === 'nao_sei' ? T.NAO_SEI_CAMPO : T.EXPLICA_CAMPO)[duvida.campo];
+      perguntar(duvida.pedido || duvida.campo, texto);
+      return;
+    }
 
     // Número solto vai só para o campo que a IAra acabou de perguntar (sem LLM). Sem pergunta pendente, pergunta a que se refere.
     const solto = numeroSolto(t);

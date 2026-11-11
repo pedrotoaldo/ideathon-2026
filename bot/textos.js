@@ -39,6 +39,23 @@ const T = {
     cultura: 'Qual é a cultura? Por exemplo: soja, milho ou trigo.',
   },
 
+  // Só na pergunta do preço, para soja, milho e trigo (valor de bot/cotacoes-demo.js); responder "usa esse" aceita o valor
+  OFERTA_PRECO_REFERENCIA: 'Se quiser, uso a referência de hoje para {cultura}: R$ {valor} (valor ilustrativo da demonstração). É só responder "usa esse".',
+  // Dúvida sobre o campo perguntado ("qual o tamanho da área?", "como assim?"): explica e repete a pergunta
+  EXPLICA_CAMPO: {
+    area_ha: 'É o tamanho da lavoura dessa safra. Pode ser em hectares ou alqueires.',
+    custo_total: 'É tudo o que você vai gastar na safra: semente, adubo, defensivo, máquina, frete. Pode ser aproximado.',
+    produtividade: 'É quanto você espera colher em cada hectare, pelo que costuma dar na sua terra.',
+    preco: 'É o preço que você quer usar na conta: o de hoje ou o que espera vender.',
+  },
+  // "não sei", "não lembro", "sei lá": pode ser aproximado + dica de como estimar; depois repete a pergunta
+  NAO_SEI_CAMPO: {
+    area_ha: 'Sem problema, pode ser aproximado. Se não tem a medida exata, uma estimativa já serve. Lembre que 1 alqueire paulista tem 2,42 hectares.',
+    custo_total: 'Sem problema, pode ser aproximado. Some semente, adubo, defensivo e operação (máquina, frete).',
+    produtividade: 'Sem problema, pode ser aproximado. Pense no que sua terra costuma dar nas últimas safras.',
+    preco: 'Sem problema, pode ser aproximado. Use o preço de hoje ou o que você espera vender.',
+  },
+
   PERGUNTA_UNIDADE_AREA: 'Esses {valor} são hectares ou alqueires?',
   FORA_DA_FAIXA: 'Esse número parece fora do comum para uma safra. Pode conferir e me dizer de novo?',
   PERGUNTA_CORRECAO: 'Sem problema. Qual número está errado? Pode dizer, por exemplo: "a saca é 110". Ou escreva "sim" se estiver tudo certo.',

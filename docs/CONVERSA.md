@@ -36,6 +36,23 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 - preco: "Qual preço da saca você quer usar na conta?"
 - cultura (só se faltar, antes de confirmar): "Qual é a cultura? Por exemplo: soja, milho ou trigo."
 
+**OFERTA_PRECO_REFERENCIA** (na pergunta do preço, e na explicação dele, só quando a cultura é soja, milho ou trigo; o valor vem de `bot/cotacoes-demo.js`; outra cultura só pergunta)
+> Se quiser, uso a referência de hoje para {cultura}: R$ {valor} (valor ilustrativo da demonstração). É só responder "usa esse".
+
+Com a oferta ativa, valem como escolha desse valor: "usa esse", "pode usar", "esse mesmo" (e variações como "usa esse mesmo") e "sim" (ou outra confirmação curta: isso, ok, certo). Qualquer número digitado continua valendo no lugar da referência.
+
+**EXPLICA_CAMPO** (dúvida sobre o campo perguntado, sem número: "qual o tamanho da área?", "como assim?", "o que é isso?"; explica e repete a pergunta do campo)
+- area: "É o tamanho da lavoura dessa safra. Pode ser em hectares ou alqueires."
+- custo_total: "É tudo o que você vai gastar na safra: semente, adubo, defensivo, máquina, frete. Pode ser aproximado."
+- produtividade: "É quanto você espera colher em cada hectare, pelo que costuma dar na sua terra."
+- preco: "É o preço que você quer usar na conta: o de hoje ou o que espera vender."
+
+**NAO_SEI_CAMPO** ("não sei", "não lembro", "sei lá" ao responder um campo; diz que pode ser aproximado, dá a dica e repete a pergunta do campo)
+- area: "Sem problema, pode ser aproximado. Se não tem a medida exata, uma estimativa já serve. Lembre que 1 alqueire paulista tem 2,42 hectares."
+- custo_total: "Sem problema, pode ser aproximado. Some semente, adubo, defensivo e operação (máquina, frete)."
+- produtividade: "Sem problema, pode ser aproximado. Pense no que sua terra costuma dar nas últimas safras."
+- preco: "Sem problema, pode ser aproximado. Use o preço de hoje ou o que você espera vender."
+
 **CONTINUAR_OU_MENU** (saudação no meio de um fluxo: "oi", "opa, e aí?"; o estado não muda)
 > Oi! Quer continuar a conta ou ver o menu? Escreva "continuar" ou "menu".
 
