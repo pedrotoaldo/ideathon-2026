@@ -7,6 +7,7 @@
 1. **Conta da safra:** custo por hectare, custo por saca, produtividade mínima, preço de equilíbrio e 3 cenários.
 2. **Reforma tributária:** perfil provável (LC 214/2025), explicação simples e checklist para o contador.
 3. **Alerta de preço simulado:** o produtor pede o aviso; na demo, a equipe dispara a cotação com `node scripts/disparar-alerta.mjs <cultura> <preço>`.
+4. **Dúvidas gerais do agro:** doença, praga, manejo, plantio, colheita e solo, em resposta curta e sem receitar defensivo (regra 11).
 
 Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao vivo. Robustez da demo é prioridade.
 
@@ -31,12 +32,14 @@ Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao v
 2. **A IA não recomenda regime tributário.** Nunca "opte por" ou "fique como". Só descreve perfil provável e manda ao contador.
 3. **A IA não recomenda vender.** O alerta só avisa que o preço chegou ao alvo que o produtor escolheu; a decisão é dele.
 4. **Respostas tributárias só com `content/reforma_tributaria_base.md`.** Fora disso: "não sei com segurança" + encaminhamento.
-5. **Escopo fechado:** safra, custos, preço e reforma tributária. Outros assuntos recebem a resposta padrão de fora de escopo.
+5. **Escopo fechado:** safra, custos, preço, clima, reforma tributária e dúvidas gerais do agro (doença, praga, manejo, plantio, colheita, solo; ver regra 11). Outros assuntos recebem a resposta padrão de fora de escopo.
 6. **Sem previsão de colheita ou de preço.**
 7. **Demo pública:** não pedir CPF, CNPJ, dados bancários ou nomes reais. Incentivar dados de exemplo.
 8. **A IAra sempre se apresenta como assistente virtual.** Nunca finge ser pessoa.
 9. **Áudio nunca substitui o texto quando há números** (Etapa 5 do PLAN).
 10. **Todo texto para o usuário em português do Brasil**, frases curtas, linguagem de produtor.
+11. **A IA não receita defensivo.** Nas dúvidas do agro (`agro_geral`, `prompts/agro_geral.md`) ela só explica doença, praga, sintomas, condições e manejo geral e cita fontes (Embrapa, IDR-Paraná). Nunca indica produto comercial, princípio ativo, dose, calda ou intervalo de aplicação, nem dá diagnóstico definitivo ("pode ser X ou Y; só confirmando no campo"). Pedido de produto ou dose recebe `AGRO_SEM_RECEITA` (receituário agronômico) e a oferta do agrônomo; `bot/agro.js` descarta qualquer saída com dose, L/ha, mL/ha, g/ha, calda, "aplique" ou nome de produto. Toda resposta agronômica termina com "Para o seu caso, vale confirmar com o agrônomo. Quer que eu chame um?".
+12. **Mensagem de espera e mensagens longas** (`docs/CONVERSA.md` seção 2.2): aviso fixo "Só um instante, já te respondo." se a resposta passar de 3 s (no máximo um por mensagem, nunca gerado pela IA); respostas acima de ~600 caracteres vão em até 3 mensagens por parágrafo; falha da consulta = `ERRO_TEMPORARIO` com a oferta do "3".
 
 ## Provedores de IA (duas divisões independentes)
 - **Chat** (conversa, extração da safra, redator tributário): `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`. **Provisório: Gemini**, pela API compatível com a OpenAI; depois vai para a OpenAI. Use só `chat/completions` e `response_format` (formato OpenAI), nada específico do Gemini. A troca deve exigir só mudar essas 3 variáveis e rodar os Roteiros A a D de novo.

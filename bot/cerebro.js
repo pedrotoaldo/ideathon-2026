@@ -329,8 +329,12 @@ async function tratar(conversa, texto, deps) {
       calculado_em: new Date().toISOString(),
     };
     delete dados.coleta;
-    say(S.montarRespostaSafra(calc), 'safra');
-    out.respostas[out.respostas.length - 1].falado = S.montarResumoFalado(calc); // texto para a voz da IAra (Etapa 5)
+    // Duas mensagens: os números principais e depois os cenários
+    const conta = S.montarRespostaSafra(calc);
+    const corte = conta.search(/\n\s*\nCenários/);
+    const primeira = out.respostas.length;
+    if (corte > 0) { say(conta.slice(0, corte).trim(), 'safra'); say(conta.slice(corte).trim(), 'safra'); } else say(conta, 'safra');
+    out.respostas[primeira].falado = S.montarResumoFalado(calc); // texto para a voz da IAra (Etapa 5)
     say(T.OFERTA_PROXIMO, 'safra');
     out.estado = 'resultado_safra';
   }
@@ -370,8 +374,25 @@ async function tratar(conversa, texto, deps) {
   }
 
   // Sem regra que resolva: o LLM decide se é safra ou fora do escopo
+  // Dúvida geral do agro: o LLM explica (prompts/agro_geral.md), o bot confere a saída. Produto, dose e diagnóstico são do agrônomo.
+  // Fica em 'agro_geral' para "sim" (ou "3") chamar o agrônomo; a pergunta vai junto no encaminhamento.
+  async function agroGeral(t) {
+    if (!deps.agro) { say(T.AGRONOMO, 'agronomo'); return; }
+    const x = await deps.agro(t);
+    out.versao_prompt = x.versao;
+    if (x.tipo === 'fora_escopo') { say(x.texto, 'fora_escopo', true); return; }
+    say(x.texto, 'agro_geral', !x.semLlm);
+    dados.nao_sei = { pergunta: String(t).slice(0, 200) };
+    out.estado = 'agro_geral';
+  }
+
   async function ambiguo(t) {
     if (conversa.estado === 'tributario') { await duvida(t); return; } // conversa sobre a reforma: segue com o redator
+    if (conversa.estado === 'agro_geral') {
+      if (ehConfirmacao(t)) { encaminhar(); return; } // "sim" ao "Quer que eu chame um?"
+      if (ehNegacao(t)) { out.estado = 'menu'; dados.nao_sei = null; say(T.AGRO_SEM_PROBLEMA, 'agro_geral'); return; }
+      await agroGeral(t); return; // segue a conversa agronômica
+    }
     const ext = await chamarLlm(t, null);
     if (ext.gatilho_preco != null && !ext.fora_do_tema) { await criarAlerta(t, ext); return; }
     if (temDadosDeSafra(ext) && !ext.fora_do_tema) {
@@ -586,8 +607,8 @@ async function tratar(conversa, texto, deps) {
     say(T.IDENTIDADE, 'identidade');
   } else if (r.intencao === 'previsao') {
     say(T.PREVISAO, 'previsao');
-  } else if (r.intencao === 'agronomo') {
-    say(T.AGRONOMO, 'agronomo');
+  } else if (r.intencao === 'agro_geral') {
+    await agroGeral(texto);
   } else if (r.intencao === 'perfil') {
     iniciarPerfil();
     if (r.resto) await perfil(r.resto);

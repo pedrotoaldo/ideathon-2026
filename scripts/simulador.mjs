@@ -37,7 +37,7 @@ export async function esperarRespostas(ids, { quietoMs = 1500, limiteMs = 40000 
   let respostas = [];
   let ultimaMudanca = Date.now();
   while (Date.now() - t0 < limiteMs) {
-    const q = await pool.query('SELECT intencao, texto, latencia_ms FROM resposta WHERE message_id = ANY($1) ORDER BY id', [lista]);
+    const q = await pool.query("SELECT intencao, texto, latencia_ms FROM resposta WHERE message_id = ANY($1) AND intencao <> 'espera' ORDER BY id", [lista]);
     if (q.rowCount !== respostas.length) { respostas = q.rows; ultimaMudanca = Date.now(); }
     if (respostas.length && Date.now() - ultimaMudanca > quietoMs) break;
     await new Promise((ok) => setTimeout(ok, 150));

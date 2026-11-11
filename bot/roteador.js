@@ -23,7 +23,15 @@ const APAGAR = ['apagar meus dados', 'apaga meus dados'];
 const GATILHO = ['me avisa quando', 'me avisa se', 'alerta de preco', 'avisa se passar', 'criar alerta'];
 const LISTA_ALERTAS = ['meus alertas', 'cancelar alerta', 'cancelar meu alerta']; // Plus 2
 const TRIBUTARIO = ['reforma', 'imposto', 'impostos', 'tributo', 'tributos', 'ibs', 'cbs', 'contador', 'nota fiscal', 'contribuinte', 'regime', 'aliquota', 'simples nacional', 'credito presumido', 'lc 214'];
-const AGRO_TECNICO = ['amarelada', 'amarelado', 'amarelando', 'praga', 'pragas', 'doenca', 'doencas', 'lagarta', 'ferrugem', 'fungo', 'mancha', 'manchas', 'adubar', 'adubacao', 'defensivo', 'veneno'];
+// Dúvida geral do agro (sem número: com número a frase é dado da safra, ex.: "gastei 45 mil em adubo")
+const AGRO_TECNICO = [
+  'amarelada', 'amarelado', 'amarelando', 'amarela', 'amarelas', 'amarelos', 'secando', 'murchando', 'murcha', 'praga', 'pragas', 'doenca', 'doencas',
+  'lagarta', 'lagartas', 'ferrugem', 'fungo', 'fungos', 'mancha', 'manchas', 'mofo', 'podridao', 'requeima', 'oidio', 'antracnose', 'percevejo', 'percevejos',
+  'pulgao', 'cigarrinha', 'broca', 'nematoide', 'nematoides', 'mato', 'daninha', 'daninhas', 'sintoma', 'sintomas',
+  'adubar', 'adubacao', 'calagem', 'solo', 'defensivo', 'defensivos', 'fungicida', 'inseticida', 'herbicida', 'veneno', 'pulverizar', 'calda', 'dose',
+  'plantar', 'plantio', 'semear', 'semeadura', 'manejo', 'rotacao', 'safrinha',
+];
+const AGRO_REGEX = [/(^|\s)(quando|ponto|epoca)( de| da| do)? (colher|colheita|plantar|plantio)/, /(^|\s)como (tratar|combater|controlar|prevenir|evitar)\s/];
 // Tentativas de mudar as regras da IAra ou de ler o prompt: nem chegam ao LLM
 const INJECAO = [
   /\b(ignor\w*|esquec\w*|desconsider\w*|descumpr\w*) (todas |todos )?(as |os |suas |seus |essas |esses |tuas )?(instrucoes|regras|ordens|orientacoes|restricoes|limites|comandos|prompts?)/,
@@ -147,7 +155,7 @@ function numeroSolto(texto) {
 }
 
 // Retorna { intencao, eSe }
-// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | alertas | clima | dolar | cotacao_demo | precos_clima | painel | audio | resumo | safra | fluxo | ambiguo
+// intencao: menu | apagar | humano | injecao | perfil | tributario | agro_geral | gatilho | alertas | clima | dolar | cotacao_demo | precos_clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
   const t = normalizarTexto(texto);
   const emFluxo = ESTADOS_DE_FLUXO.includes(estado);
@@ -175,7 +183,7 @@ function rotear(texto, estado) {
   if (t === '4' || tem(t, GATILHO)) return { intencao: 'gatilho' };
   if (t === '2') return { intencao: 'perfil' };
   if (tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
-  if (tem(t, AGRO_TECNICO)) return { intencao: 'agronomo' };
+  if (!/\d/.test(t) && (tem(t, AGRO_TECNICO) || AGRO_REGEX.some((re) => re.test(t)))) return { intencao: 'agro_geral' };
   if (tem(t, CLIMA)) return { intencao: 'clima' };
   if (tem(t, PREVISAO)) return { intencao: 'previsao' };
   if (tem(t, DOLAR)) return { intencao: 'dolar' };

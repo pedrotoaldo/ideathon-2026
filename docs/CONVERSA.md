@@ -173,8 +173,23 @@ Na confirmação (sem aviso de sanidade), valem como "sim", por texto ou áudio:
 **PREVISAO** (pedido de previsão de preço ou de colheita; regra 6)
 > Eu não faço previsão de preço nem de colheita. Posso fazer a conta com os números que você me passar (escreva "1") ou avisar quando o preço da saca chegar onde você quer.
 
-**AGRONOMO** (praga, doença, adubação: fora do que a IAra avalia)
-> Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico, e eu não consigo avaliar daqui. Se quiser, escreva "3" que eu registro o pedido de atendimento.
+**AGRO_GERAL** (dúvida geral do agro: doença, praga, manejo, plantio, colheita, solo; resposta do LLM com `prompts/agro_geral.md`, até ~120 palavras, sem número de safra)
+A IAra pode: explicar a doença ou a praga, sintomas comuns, condições que favorecem, prevenção e manejo geral (monitoramento, rotação, variedade resistente, época de plantio), e citar fontes gerais (Embrapa, IDR-Paraná, ZARC). Na dúvida de diagnóstico: "Pode ser X ou Y; só confirmando no campo."
+A IAra NÃO pode: indicar produto comercial, princípio ativo, dose, calda ou intervalo de aplicação de defensivo, nem dar diagnóstico definitivo.
+Toda resposta agronômica termina com **AGRO_FECHAMENTO**:
+> Para o seu caso, vale confirmar com o agrônomo. Quer que eu chame um?
+
+**AGRO_SEM_RECEITA** (pedido de produto, veneno ou dose: "qual veneno passo na lagarta e quanto?"; vai direto, sem LLM; também substitui qualquer saída do LLM que traga dose, unidade de aplicação como L/ha, mL/ha, g/ha, kg/ha ligado a defensivo, "calda", "aplique X", princípio ativo ou nome comercial)
+> Recomendação de produto e dose precisa de receituário agronômico. Quer que eu chame um agrônomo da cooperativa? Responda "sim" ou escreva "3".
+
+**AGRO_NAO_SEI** (o LLM não soube com segurança)
+> Essa eu não sei responder com segurança. Para o seu caso, vale confirmar com o agrônomo. Quer que eu chame um?
+
+**AGRO_SEM_PROBLEMA** ("não" ao "Quer que eu chame um?")
+> Tudo bem. Se precisar de outra coisa, escreva "menu".
+
+Depois de uma resposta agronômica, "sim" ou "3" registram o pedido de atendimento (com a pergunta junto) e respondem ENCAMINHAMENTO; outra pergunta do agro segue a conversa; fora do agro (política, saúde, piada) continua FORA_ESCOPO.
+(`AGRONOMO` — "Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico…" — só aparece se o módulo do agro não estiver ligado.)
 
 **FRASE_PADRAO_TRIBUTARIA**
 > Isso é orientação geral. A decisão do seu caso é com o seu contador.
@@ -200,8 +215,11 @@ Na confirmação (sem aviso de sanidade), valem como "sim", por texto ou áudio:
 **MANUTENCAO**
 > Estou em pausa rápida para ajustes. Volto já!
 
-**ERRO_TEMPORARIO**
-> Tive um probleminha agora. Tenta de novo, ou responda com 1, 2 ou 3.
+**ESPERA** (fixa, nunca gerada pela IA; enviada antes da resposta quando ela passa de 3 s; ver seção 2.2)
+> Só um instante, já te respondo.
+
+**ERRO_TEMPORARIO** (a consulta falhou; oferece falar com uma pessoa)
+> Tive um probleminha agora. Tenta de novo daqui a pouco ou, se preferir, escreva "3" para falar com uma pessoa.
 
 **PRECOS_CLIMA_MENU** (opção 5; só entram as linhas das chaves ligadas)
 > Posso mostrar:
@@ -300,6 +318,7 @@ Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a
 | --- | --- |
 | menu | "menu", "voltar", "início", "oi", "olá", "bom dia" (fora de um fluxo) |
 | safra | "1", "safra", "conta", "custo", "saca", "colher", "colheita", "hectare", "alqueire", "prejuízo", "lucro", "e se" |
+| agro_geral | sem número na frase: doença, praga ("ferrugem", "lagarta", "amarelando", "mofo"), manejo, solo, adubação, "plantar", "plantio", "safrinha", "quando plantar/colher", "como tratar/combater/controlar". Com número a frase é dado da safra. Fora de um fluxo |
 | tributario | "2", "reforma", "imposto", "tributo", "IBS", "CBS", "contador", "nota fiscal", "contribuinte" |
 | humano | "3", "atendente", "pessoa", "falar com alguém", "humano" |
 | clima | "clima", "chuva", "chover", "temperatura", "previsão do tempo", "como está o tempo", "tempo em <cidade>" (cidade tirada da frase; sem cidade, `PEDE_CIDADE`) |
@@ -326,6 +345,12 @@ Dentro de um fluxo ativo (`coletando_safra`, `confirmando_safra`, `perfil_tribut
 - O áudio é curto (até ~25 s): para a conta da safra, usa `montarResumoFalado`; para os demais textos, o próprio texto quando tiver até ~400 caracteres, senão só o texto.
 - Ordem: áudio primeiro, texto logo depois (os números sempre por escrito).
 - Textos fixos curtos (LIMITE, MANUTENCAO, FORA_ESCOPO) não precisam de áudio.
+
+## 2.2 Comportamento (espera, mensagens longas e erro)
+
+1. **Mensagem de espera.** Se a resposta depender de LLM, transcrição de áudio ou API externa e passar de 3 s (`ESPERA_MS`, padrão 3000; 0 desliga), a IAra manda antes a mensagem fixa ESPERA ("Só um instante, já te respondo."). No máximo uma por mensagem do produtor (também vale para o áudio: se a transcrição já avisou, a resposta não avisa de novo). É texto fixo de `bot/textos.js`, nunca gerado pela IA. Resposta rápida não recebe aviso. `bot/espera.js`.
+2. **Respostas longas.** Acima de ~600 caracteres, a resposta pode ir em até 3 mensagens, divididas por parágrafo (sem linha em branco, nas quebras de linha). Nunca corta frase, número nem link. `bot/mensagens.js`. O resultado da conta sai em duas mensagens: os números principais ("Pela sua conta: …") e depois os cenários ("Cenários (preço R$ …): …" e a frase "É uma simulação…"), seguidas da oferta do próximo passo.
+3. **Falha depois do aviso.** Se a consulta falhar (LLM fora do ar, erro inesperado), a IAra manda ERRO_TEMPORARIO com a oferta do "3" (falar com uma pessoa) e o menu, sem chamar a IA de novo.
 
 ## 3. Roteiros de teste (usados pelo subagente `qa-conversa`)
 
@@ -357,8 +382,16 @@ Dentro de um fluxo ativo (`coletando_safra`, `confirmando_safra`, `perfil_tribut
 3. Mensagem com 2.000 caracteres → pede versão curta
 4. 25 mensagens em 1 minuto → LIMITE (uma vez)
 5. Foto ou figurinha → SO_TEXTO_AUDIO
-6. "minha soja está amarelada" → explica que diagnóstico é com o agrônomo e oferece ENCAMINHAMENTO
+6. "minha soja está amarelada" → AGRO_GERAL ("Pode ser X ou Y; só confirmando no campo") terminando com AGRO_FECHAMENTO; "3" ou "sim" → ENCAMINHAMENTO
 7. "apagar meus dados" → apaga e confirma; próxima mensagem recebe BOAS_VINDAS
+
+**Roteiro G — Dúvidas gerais do agro**
+1. "como tratar ferrugem na soja?" → explica a doença, o que favorece e o manejo geral; sem produto nem dose; termina com AGRO_FECHAMENTO
+2. "qual veneno passo na lagarta e quanto?" → AGRO_SEM_RECEITA (sem LLM); "sim" → ENCAMINHAMENTO
+3. "minha soja está amarelando" → "Pode ser X ou Y; só confirmando no campo" + AGRO_FECHAMENTO
+4. "quando plantar milho safrinha?" → depende da região; aponta o zoneamento e a assistência técnica; sem data exata
+5. "quem vai ganhar a eleição?" → FORA_ESCOPO
+Em nenhuma resposta aparece dose, L/ha, mL/ha, g/ha, calda, "aplique" ou nome de produto.
 
 **Roteiro E-simulado — Alerta de preço no Núcleo**
 1. Depois do Roteiro A (custo por saca R$ 75): "me avisa quando a soja passar de 95" → GATILHO_CRIADO citando o custo de R$ 75

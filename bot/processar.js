@@ -12,8 +12,11 @@ const { permitido } = require('./acesso');
 const { tratar } = require('./cerebro');
 const { extrair } = require('./extracao');
 const { responder: responderTributario } = require('./tributario');
+const { responder: responderAgro } = require('./agro');
 const consultas = require('./consultas');
 const { criarDebounce } = require('./debounce');
+const { criarAvisoDeEspera } = require('./espera');
+const { dividirResposta } = require('./mensagens');
 const { enfileirar } = require('./fila');
 const { registrar } = require('./limite');
 const { pedeApagar, rotear } = require('./roteador');
@@ -34,6 +37,16 @@ function log(m, intencao, t0, extra = '') {
 }
 
 // Envia e registra uma resposta ligada a uma mensagem (a última do grupo, quando há agrupamento)
+// Aviso fixo "Só um instante, já te respondo." quando a resposta passa de 3 s; registra como intencao 'espera'
+function criarEspera(m, t0) {
+  return criarAvisoDeEspera({
+    enviar: async (texto) => {
+      await enviarTexto(m.destino, texto);
+      await db.registrarResposta({ message_id: m.message_id, numero: m.numero, intencao: 'espera', texto, usou_llm: false, latencia_ms: Date.now() - t0 });
+    },
+  });
+}
+
 function criarResponder(m, t0) {
   return async function responder(texto, intencao, { usou_llm = false, versao_prompt = null } = {}) {
     try {
@@ -154,10 +167,14 @@ async function processar(evento) {
         return;
       }
       let texto = '';
+      const espera = criarEspera(m, t0);
+      espera.iniciar([m.message_id]);
       try {
         texto = await transcreverAudio(m);
       } catch (e) {
         console.error(`[transcrição] falhou para ${mascarar(m.numero)}: ${e.message}`);
+      } finally {
+        espera.cancelar();
       }
       if (!texto) {
         await db.carregarConversa(m.numero);
@@ -189,6 +206,8 @@ async function responderGrupo(numero, itens) {
   const temAudio = itens.some((i) => i.m.deAudio);
   const extra = [itens.length > 1 ? `agrupadas=${itens.length}` : '', temAudio ? 'audio' : ''].filter(Boolean).join(' ');
   const responder = criarResponder(m, t0);
+  const espera = criarEspera(m, t0);
+  espera.iniciar(itens.map((i) => i.m.message_id)); // no máximo um aviso por mensagem do produtor
   let intencao = 'erro';
 
   try {
@@ -217,7 +236,7 @@ async function responderGrupo(numero, itens) {
     } else {
       const faixasCultura = await db.config('faixas_cultura', undefined);
       const limitesSanidade = await db.config('limites_sanidade', undefined);
-      const r = await tratar(conversa, texto, { extrair, faixasCultura, limitesSanidade, tributario: responderTributario, audioAtivo: audioAtivo(),
+      const r = await tratar(conversa, texto, { extrair, faixasCultura, limitesSanidade, tributario: responderTributario, agro: responderAgro, audioAtivo: audioAtivo(),
         precosAtivo: consultas.precosAtivo(), climaAtivo: consultas.climaAtivo(), dolar: consultas.dolar, clima: consultas.clima });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
@@ -228,6 +247,7 @@ async function responderGrupo(numero, itens) {
         log(m, intencao, t0, extra);
         return;
       }
+      espera.cancelar(); // a resposta chegou: sem aviso de espera daqui em diante
       if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
       // Preferência de áudio: comando explícito, ou áudio recebido liga
       let querAudio = !!conversa.responde_audio;
@@ -240,12 +260,16 @@ async function responderGrupo(numero, itens) {
       }
       for (const x of r.respostas) {
         intencao = x.intencao;
-        await responder(x.texto, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });
+        // Resposta longa (acima de ~600 caracteres) vai em até 3 mensagens, por parágrafo
+        for (const parte of dividirResposta(x.texto)) {
+          await responder(parte, x.intencao, { usou_llm: x.usou_llm, versao_prompt: x.usou_llm ? r.versao_prompt : null });
+        }
       }
       await db.salvarEstado(m.numero, r.estado, r.dados);
     }
     log(m, intencao, t0, extra);
   } catch (e) {
+    espera.cancelar();
     if (e.name === 'LlmIndisponivel') {
       // LLM fora: ERRO_TEMPORARIO e menu numérico (o cálculo e o menu não dependem do LLM)
       console.error(`[llm] ${mascarar(m.numero)}: ${e.message}`);
@@ -260,6 +284,8 @@ async function responderGrupo(numero, itens) {
     console.error(`[erro] ${mascarar(m.numero)}: ${e.stack || e.message}`);
     try { await responder(T.ERRO_TEMPORARIO, 'erro'); } catch (_) { /* nada a fazer */ }
     log(m, 'erro', t0, extra);
+  } finally {
+    espera.cancelar(); // saídas antecipadas (boas-vindas, expirada, apagar) não deixam o aviso pendente
   }
 }
 

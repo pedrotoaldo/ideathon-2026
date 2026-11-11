@@ -100,7 +100,12 @@ const T = {
   ].join('\n'),
   NAO_SEI_TRIBUTARIO: 'Essa eu não sei responder com segurança. Vale levar a dúvida ao seu contador. Se quiser, escreva "3" que eu registro o pedido de atendimento.',
   ENCAMINHAMENTO: 'Registrei seu pedido. Nesta demonstração, a equipe do Agro na Medida pode conversar com você aqui no evento. No produto real, o técnico ou o contador da cooperativa recebe o resumo.',
-  AGRONOMO: 'Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico, e eu não consigo avaliar daqui. Se quiser, escreva "3" que eu registro o pedido de atendimento.',
+  // Dúvidas gerais do agro (prompts/agro_geral.md): explica e orienta; produto, dose e diagnóstico definitivo são do agrônomo
+  AGRO_SEM_RECEITA: 'Recomendação de produto e dose precisa de receituário agronômico. Quer que eu chame um agrônomo da cooperativa? Responda "sim" ou escreva "3".',
+  AGRO_FECHAMENTO: 'Para o seu caso, vale confirmar com o agrônomo. Quer que eu chame um?',
+  AGRO_NAO_SEI: 'Essa eu não sei responder com segurança. Para o seu caso, vale confirmar com o agrônomo. Quer que eu chame um?',
+  AGRO_SEM_PROBLEMA: 'Tudo bem. Se precisar de outra coisa, escreva "menu".',
+  AGRONOMO:'Diagnóstico de lavoura, praga e adubação é com o agrônomo ou o técnico, e eu não consigo avaliar daqui. Se quiser, escreva "3" que eu registro o pedido de atendimento.',
 
   IDENTIDADE: 'Eu sou a IAra, uma assistente virtual do Agro na Medida. Não sou uma pessoa. Se quiser falar com alguém da equipe, escreva "3".',
   PREVISAO: 'Eu não faço previsão de preço nem de colheita. Posso fazer a conta com os números que você me passar (escreva "1") ou avisar quando o preço da saca chegar onde você quer.',
@@ -123,7 +128,9 @@ const T = {
   AUDIO_AINDA_NAO: 'Por enquanto eu entendo só texto. Pode escrever?',
   LIMITE: 'Recebi muitas mensagens seguidas. Me dá uns minutinhos e tenta de novo.',
   MANUTENCAO: 'Estou em pausa rápida para ajustes. Volto já!',
-  ERRO_TEMPORARIO: 'Tive um probleminha agora. Tenta de novo, ou responda com 1, 2 ou 3.',
+  // Aviso fixo (nunca gerado pela IA) quando a resposta passa de ESPERA_MS (3 s)
+  ESPERA: 'Só um instante, já te respondo.',
+  ERRO_TEMPORARIO: 'Tive um probleminha agora. Tenta de novo daqui a pouco ou, se preferir, escreva "3" para falar com uma pessoa.',
 };
 
 module.exports = T;

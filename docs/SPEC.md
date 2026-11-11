@@ -12,7 +12,7 @@ Pôr no ar, até a banca de 11/11/2026, um número de WhatsApp que qualquer pess
 Depois do protótipo (`docs/FASES_PLUS.md`): gatilho automático, painel web da safra e painel da demo, Redis, piloto.
 
 ## 2. Fora do objetivo agora
-Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integração com sistemas da cooperativa; simulação tributária em reais; diagnóstico de lavoura (só encaminha ao agrônomo); WhatsApp Cloud API oficial (fica para o piloto).
+Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integração com sistemas da cooperativa; simulação tributária em reais; diagnóstico definitivo de lavoura e receita de defensivo (a IAra só explica em geral e encaminha ao agrônomo); WhatsApp Cloud API oficial (fica para o piloto).
 
 ## 3. Público e tom
 - Usuário: produtor rural de 30 a 59 anos e 60+ (ver estudo de público). Também quem estiver na plateia testando.

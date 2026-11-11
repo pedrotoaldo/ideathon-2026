@@ -41,7 +41,7 @@ test('Roteiro A: números exatos da SPEC seção 6', async () => {
   assert.match(p.texto, /Como espera: sobram R\$ 15\.000/);
   assert.match(p.texto, /Colhendo 10% mais: sobram R\$ 21\.000/);
   assert.equal(p.conv.dados.ultimo_calculo.preco_equilibrio, 75);
-  assert.equal(p.r.respostas.length, 2); // RESULTADO_SAFRA + OFERTA_PROXIMO
+  assert.equal(p.r.respostas.length, 3); // números principais + cenários + OFERTA_PROXIMO
 
   p = await passo(p.conv, 'e se eu colher 20% menos, fico no prejuízo?', llm({ alteracao: { produtividade_pct: -20, preco: null, custo_total: null, produtividade_valor: null } }));
   assert.match(p.texto, /^Não, ainda sobram R\$ 3\.000/);
