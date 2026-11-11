@@ -61,7 +61,7 @@ test('sintetizar: /audio/speech com voz, formato e instruções (gpt-4o) e devol
   assert.equal(corpo.input, 'Olá');
   assert.equal(corpo.model, 'gpt-4o-mini-tts');
   assert.ok(corpo.voice);
-  assert.match(corpo.instructions, /português do Brasil/);
+  assert.match(corpo.instructions, /Brazilian Portuguese/);
   assert.equal(typeof b64, 'string');
   assert.ok(b64.length > 0);
 });
