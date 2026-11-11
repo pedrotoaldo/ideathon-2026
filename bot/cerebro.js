@@ -101,7 +101,9 @@ function lerCulturaResposta(t) {
 const CAMPOS_SAFRA = ['area_ha', 'custo_total', 'produtividade', 'preco'];
 const ACEITA_REFERENCIA = /^(usa esse|pode usar|esse mesmo|usa esse mesmo|pode usar esse|pode usar esse mesmo)$/;
 const NAO_SEI =/(^| )(nao sei|nao lembro|sei la|sei nao|nao tenho ideia|nao faco ideia)( |$)/;
-const PERGUNTA_DE_CAMPO = /^(qual|quais|como|o que|oque|que |quanto|nao entendi|nao entendo|explica|explique|me explica)|\?/;
+// Dúvida sobre o campo: ou pede explicação (meta) ou faz pergunta que cita o campo. "Você está bem?" não é nenhuma das duas.
+const META = /(^| )(como assim|nao entendi|nao entendo|explica|explique|me explica|o que e|oque e|o que significa|o que quer dizer|que que e)( |$)/;
+const FORMA_PERGUNTA = /^(qual|quais|que|quanto|como|o que|oque)( |$)/;
 function campoCitado(n) {
   if (/(^| )(preco|valor)( |$)/.test(n)) return 'preco';
   if (/(sacas? por|por hectare|colher|colheita|produtividade|rende|render)/.test(n)) return 'produtividade';
@@ -114,8 +116,10 @@ function duvidaDeCampo(t, campoPedido) {
   if (!n || /\d/.test(n) || n.split(' ').length > 8) return null;
   const pedido = CAMPOS_SAFRA.includes(campoPedido) ? campoPedido : null;
   if (NAO_SEI.test(n)) return pedido ? { tipo: 'nao_sei', campo: pedido } : null;
-  if (!PERGUNTA_DE_CAMPO.test(String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))) return null;
-  const campo = campoCitado(n) || pedido;
+  const citado = campoCitado(n);
+  const ehPergunta = FORMA_PERGUNTA.test(n) || /[?]/.test(t);
+  if (!(META.test(n) || (citado && ehPergunta))) return null;
+  const campo = citado || pedido;
   return campo ? { tipo: 'explica', campo, pedido } : null;
 }
 

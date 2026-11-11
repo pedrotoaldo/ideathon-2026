@@ -438,6 +438,18 @@ test('dúvida sobre o campo explica e repete a pergunta, sem LLM (bug "qual o ta
   assert.equal(extrair.chamadas.length, 0);
 });
 
+test('REGRESSÃO celular: conversa fiada ("você está bem?") não vira explicação do campo', async () => {
+  const base = () => ({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } });
+  for (const t of ['você está bem?', 'tudo bem com você?', 'como vai você?', 'quem é você?']) {
+    const p = await passo(base(), t, llm({ fora_do_tema: true }));
+    assert.doesNotMatch(p.texto, /É o tamanho da lavoura/, t);
+    assert.match(p.texto, /Qual o tamanho da área/, t);
+  }
+  for (const t of ['como assim?', 'não entendi', 'o que é isso?', 'qual o tamanho da área?', 'que área?']) {
+    assert.match((await passo(base(), t, llm())).texto, /^É o tamanho da lavoura/, t);
+  }
+});
+
 test('"não sei", "não lembro", "sei lá": pode ser aproximado + dica do campo, e repete a pergunta', async () => {
   const extrair = llm();
   for (const t of ['não sei', 'Não lembro.', 'sei lá', 'ah, não sei não']) {
