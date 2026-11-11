@@ -229,10 +229,6 @@ async function responderGrupo(numero, itens) {
         return;
       }
       if (r.acao === 'encaminhar') await db.registrarEncaminhamento({ numero: m.numero, motivo: r.motivo || 'pedido_usuario', contexto: r.contexto || null });
-      // Mostra a transcrição quando a conversa está coletando ou confirmando dados por voz
-      if (temAudio && ['coletando_safra', 'confirmando_safra', 'perfil_tributario'].includes(conversa.estado)) {
-        await responder('Entendi: "' + texto.replace(/\n+/g, ' ').slice(0, 300) + '"', 'transcricao');
-      }
       // Preferência de áudio: comando explícito, ou áudio recebido liga
       let querAudio = !!conversa.responde_audio;
       if (r.responde_audio !== undefined) querAudio = r.responde_audio;

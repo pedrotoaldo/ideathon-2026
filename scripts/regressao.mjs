@@ -156,7 +156,7 @@ const cenariosAudio = AUDIO_LIGADO ? [
     passos: [
       ['oi', [/Pode falar comigo por texto ou por áudio/]],
       ['1', [/Vamos fazer a conta/]],
-      ['plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez', [/Entendi: "plantei vinte alqueires/, /48,4 ha \(20 alqueires\)/, /\[áudio\]/], [], { audio: true }],
+      ['plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez', [/48,4 ha \(20 alqueires\)/, /\[áudio\]/], [/Entendi: "/], { audio: true }], // sem eco da transcrição
       ['isso', [/\[áudio\] Olha, fiz a sua conta/, /custo por saca é R\$ 61,98/, /sobram R\$ 139\.440/], [], { audio: true }],
       ['só texto', [/daqui pra frente só texto/], [/\[áudio\]/]],
       ['e se a saca for 70?', [/Equilíbrio|equilíbrio/], [/\[áudio\]/]],
@@ -281,10 +281,10 @@ const cenarios1111 = [
       await passo('oi', [/Oi!/]);
       await passo('1', [/Vamos fazer a conta/]);
       await passo('2 de soja', [/Esses 2 são hectares ou alqueires\?/]);
-      await passo('São hectares. É... 40 hectares. É investir 40 mil.', [/Entendi: "São hectares/, /Quantas sacas por hectare/], [], { audio: true });
+      await passo('São hectares. É... 40 hectares. É investir 40 mil.', [/Quantas sacas por hectare/], [], { audio: true });
       await passo('60', [/Qual preço da saca/]);
       await passo('100', [/Entendi: 40 ha de soja, custo de R\$ 40\.000, 60 sacas\/ha e saca a R\$ 100/], [/Atenção/]);
-      await passo('Isso.', [/Entendi: "Isso\."/, /custo por saca é R\$ 16,67/, /sobram R\$ 200\.000/], [], { audio: true });
+      await passo('Isso.', [/custo por saca é R\$ 16,67/, /sobram R\$ 200\.000/], [], { audio: true });
       return r;
     },
   },
@@ -315,7 +315,7 @@ const cenarios1111 = [
       await passo('1', [/Vamos fazer a conta/]);
       await passo(conta, [/Entendi: 10 ha de soja/, /Está certo\?/]);
       await passo('blá blá talvez depois', [/Não entendi\. Os dados estão certos\? Responda sim ou não\./], [/Qual número está errado/]);
-      await passo('Fim.', [/Entendi: "Fim\."/, /custo por saca é R\$ 75\./], [], { audio: true });
+      await passo('Fim.', [/custo por saca é R\$ 75\./], [], { audio: true });
       await passo('1', [/Vamos fazer a conta/]);
       await passo(conta, [/Está certo\?/]);
       await passo('Dá certinho, dá certinho. Vai.', [/custo por saca é R\$ 75\./], [/Qual número está errado/], { audio: true });

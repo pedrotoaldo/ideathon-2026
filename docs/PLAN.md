@@ -81,7 +81,7 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 
 ## Etapa 5 — Áudio (OpenAI), só depois de a conversa por texto estar estável
 Usa `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO` e `AUDIO_MODEL_TTS`, separados do `LLM_*`.
-- [x] Entrada: `getBase64FromMediaMessage` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → "Entendi: ..." → segue como texto (testar com iPhone, `docs/ARCHITECTURE.md` seção 3); o `AUDIO_AINDA_NAO` sai do fluxo
+- [x] Entrada: `getBase64FromMediaMessage` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → segue como texto (sem eco da transcrição; removido a pedido) (testar com iPhone, `docs/ARCHITECTURE.md` seção 3); o `AUDIO_AINDA_NAO` sai do fluxo
 - [x] Saída: `POST {AUDIO_BASE_URL}/audio/speech` com o resumo falado (`montarResumoFalado`) → `sendWhatsAppAudio`; áudio primeiro, texto com os números logo depois; falha no TTS → só texto
 - [x] Comandos "manda em áudio" e "só texto" (`AUDIO_LIGADO`, `AUDIO_DESLIGADO`); áudio de entrada liga o áudio de resposta
 - [ ] Roteiro B por áudio e Roteiro F, passos 1 a 3 (feitos no simulador; falta o teste com áudio real e `AUDIO_API_KEY` no `.env`)

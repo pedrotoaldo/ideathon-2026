@@ -65,7 +65,7 @@ async function transcrever(buffer, mimetype, { fetchFn } = {}) {
 const INSTRUCOES_VOZ = [
   'Voice: A young Brazilian woman in her mid-twenties, recently graduated, speaking Brazilian Portuguese with a neutral accent. Light, bright and youthful voice; never mature, never deep, never like a news anchor or a call center.',
   'Tone: Warm, friendly and confident, like talking to a farmer she knows well. Smiling while she speaks.',
-  'Pacing: Natural conversational speed, a bit lively, with short pauses between ideas.',
+  'Pacing: Slightly faster than normal conversational speed, lively and energetic, with short pauses between ideas; never slow or drawn out.',
   'Emotion: Genuinely interested and encouraging; calm when giving bad news.',
   'Pronunciation: Clear and relaxed, everyday Brazilian Portuguese, not formal.',
 ].join(' ');
@@ -79,6 +79,8 @@ async function sintetizar(texto, { fetchFn } = {}) {
     input: texto,
     response_format: process.env.TTS_FORMATO || 'mp3',
   };
+  const velocidade = Number(process.env.TTS_VELOCIDADE || 1.15); // 1 = normal; a API aceita de 0,25 a 4
+  if (velocidade > 0 && velocidade !== 1) corpo.speed = Math.min(4, Math.max(0.25, velocidade));
   if (!/^tts-1/.test(modelo)) corpo.instructions = process.env.TTS_INSTRUCOES || INSTRUCOES_VOZ; // sempre enviado (tts-1 não aceita)
   const r = await postar(base() + '/audio/speech', {
     method: 'POST',
