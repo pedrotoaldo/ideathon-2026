@@ -8,9 +8,9 @@
 | Orquestração | **n8n** (instância própria da equipe) | Equipe já domina; fluxos visuais | Igual, em modo fila |
 | Banco | **PostgreSQL 16** | Estado da conversa, logs, idempotência | + pgvector para RAG |
 | Cache da Evolution | Redis 7 | Só cache interno da Evolution (sessão do WhatsApp). Não guarda conversas da IAra | Plus 5: fila do n8n, agrupamento de mensagens, limites, memória curta |
-| LLM | API compatível com OpenAI via HTTP Request (`LLM_BASE_URL`) | Troca OpenAI ↔ Ollama só mudando o `.env` | Avaliar custo |
-| Transcrição | Whisper (OpenAI `audio/transcriptions`) ou local | Português bom e rápido | Igual |
-| Voz da IAra (TTS) — Plus 1 | OpenAI `audio/speech` (`LLM_MODEL_TTS`, voz em `TTS_VOZ`) | Resposta falada curta; a Evolution converte em nota de voz | Avaliar voz regional |
+| Chat (LLM) | API compatível com OpenAI via HTTP Request (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`). **Provisório: Gemini**; depois OpenAI | Só `chat/completions` + `response_format`; a troca de provedor é só no `.env` (seção 7.1) | Avaliar custo |
+| Transcrição — Etapa 5 | OpenAI `POST {AUDIO_BASE_URL}/audio/transcriptions` (`AUDIO_MODEL_TRANSCRICAO`) | Português bom e rápido; separado do chat | Igual |
+| Voz da IAra (TTS) — Etapa 5 | OpenAI `POST {AUDIO_BASE_URL}/audio/speech` (`AUDIO_MODEL_TTS`, voz em `TTS_VOZ`) | Resposta falada curta; a Evolution converte em nota de voz | Avaliar voz regional |
 | Webapp — Plus 3 e 4 | Node 21 + Fastify + `pg`, HTML/CSS/JS sem build, Chart.js por CDN | Sobe rápido, reaproveita `safra.cjs`, roda no mesmo Docker | Igual, com login |
 | Clima | **Open-Meteo** (sem API key) | Grátis e simples | Igual |
 | Cálculo | `src/calc/safra.cjs` dentro de um Code node | Determinístico e testado | Igual |
@@ -24,10 +24,10 @@ Celular da plateia ──WhatsApp──> Evolution API ──webhook──> n8n 
                                      ^                        │
                                      │ sendText               ├─> Postgres (estado, logs, limites)
                                      └────────────────────────┤
-                                                              ├─> Whisper (áudio → texto)
-                                                              ├─> LLM (classificar/extrair, redigir tributário)
+                                                              ├─> LLM de chat (classificar/extrair, redigir tributário; Gemini por ora)
+                                                              ├─> Áudio OpenAI (Etapa 5): transcrição (áudio → texto)
                                                               ├─> Code: safra.cjs (números)
-                                                              ├─> TTS (texto → áudio da IAra)
+                                                              ├─> Áudio OpenAI (Etapa 5): TTS (texto → áudio da IAra)
                                                               └─> Open-Meteo (clima, P1)
 
 Admin do webapp ──cotação──> Postgres ──webhook──> n8n "agro-zap-gatilhos" ──alerta──> Evolution ──> produtor
@@ -40,19 +40,19 @@ Webapp /demo (telão) e /p/<token> (produtor) ──leitura──> Postgres (+ s
 | --- | --- | --- | --- |
 | 1 | Webhook `POST /webhook/agro-zap` | Webhook (responde 200 na hora) | Recebe `MESSAGES_UPSERT` |
 | 2 | Normalizar | Code | Extrai `numero` (remoteJid sem sufixo), `message_id`, `fromMe`, `isGroup`, `tipo` (texto, audio, outro), `texto`, `duracao_audio` |
-| 3 | Descartar | IF | `fromMe`, grupo (`@g.us`), status (`status@broadcast`), tipo `outro` → fim (tipo outro responde `SO_TEXTO_AUDIO`) |
+| 3 | Descartar | IF | `fromMe`, grupo (`@g.us`), status (`status@broadcast`), tipo `outro` → fim (tipo outro responde `SO_TEXTO_AUDIO`; até a Etapa 5, tipo audio responde `AUDIO_AINDA_NAO`) |
 | 4 | Idempotência | Postgres | `INSERT INTO mensagem(message_id, ...) ON CONFLICT DO NOTHING RETURNING id`; vazio → fim |
 | 5 | Kill switch e limite | Postgres | Lê `config.bot_ativo` e conta mensagens do número nos últimos 10 min |
 | 6 | Bloqueios | IF | Inativo → `MANUTENCAO`; acima do limite → `LIMITE` (uma vez por janela) |
-| 7 | Áudio | IF + HTTP | `POST /chat/getBase64FromMediaMessage/{instance}` → `POST {LLM_BASE_URL}/audio/transcriptions` → `texto` |
+| 7 | Áudio (**Etapa 5**) | IF + HTTP | `POST /chat/getBase64FromMediaMessage/{instance}` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → `texto`. Antes da Etapa 5 este nó não existe: áudio responde `AUDIO_AINDA_NAO` |
 | 8 | Carregar conversa | Postgres | `SELECT ... FOR UPDATE` em `conversa` (cria se não existe) |
 | 9 | Cérebro | Code | Máquina de estados (seção 4). Decide: responder texto fixo, chamar extração, calcular, ou chamar redator tributário |
-| 10 | Extração | HTTP (LLM) | `prompts/extracao_safra.md`, `response_format: json_schema` |
+| 10 | Extração | HTTP (LLM) | `prompts/extracao_safra.md`, `response_format: {type: "json_object"}` + schema no prompt, validado no n8n (funciona em Gemini e OpenAI) |
 | 11 | Calcular safra | Code | Conteúdo de `src/calc/safra.cjs` + formatação |
 | 12 | Redator tributário | HTTP (LLM) | `prompts/agente_sistema.md` + `content/reforma_tributaria_base.md` |
 | 13 | Clima (P1) | HTTP | Open-Meteo geocoding + forecast |
 | 14 | Salvar estado | Postgres | Atualiza `conversa.estado` e `conversa.dados` |
-| 15 | Responder (sub-workflow) | Execute Workflow | Se `responde_audio`: TTS do `texto_falado` → `POST /message/sendWhatsAppAudio/{instance}`; depois sempre `POST /message/sendText/{instance}` com `{ number, text }`. Falha no TTS não impede o texto |
+| 15 | Responder (sub-workflow) | Execute Workflow | (Etapa 5) Se `responde_audio`: TTS do `texto_falado` → `POST /message/sendWhatsAppAudio/{instance}`; depois sempre `POST /message/sendText/{instance}` com `{ number, text }`. Falha no TTS não impede o texto |
 | 16 | Log | Postgres | `resposta` com intenção, latência, versão do prompt |
 | 17 | Erro | Error Trigger (workflow separado) | Envia `ERRO_TEMPORARIO` ao número e grava erro |
 
@@ -60,7 +60,7 @@ Dica: o roteamento por números do menu e palavras-chave é feito no Code node, 
 
 **Corrida por número:** duas mensagens do mesmo número ao mesmo tempo podem disputar o estado. O `SELECT ... FOR UPDATE` dentro de uma transação, ou `pg_advisory_xact_lock(hashtext(numero))`, resolve.
 
-**Áudio do iPhone:** há relato de erro 400 em `getBase64FromMediaMessage` com áudio vindo de iOS nas versões 2.3.7 e 2.4.0-rc2 ([issue #2550](https://github.com/evolution-foundation/evolution-api/issues/2550)). Testar com um iPhone na Etapa 3. Alternativa: ativar o envio de base64 no próprio webhook da instância e ler a mídia do payload.
+**Áudio do iPhone:** há relato de erro 400 em `getBase64FromMediaMessage` com áudio vindo de iOS nas versões 2.3.7 e 2.4.0-rc2 ([issue #2550](https://github.com/evolution-foundation/evolution-api/issues/2550)). Testar com um iPhone na Etapa 5. Alternativa: ativar o envio de base64 no próprio webhook da instância e ler a mídia do payload.
 
 ## 4. Máquina de estados (nó "Cérebro")
 
@@ -70,7 +70,7 @@ Dica: o roteamento por números do menu e palavras-chave é feito no Code node, 
 | `menu` | "1" / intenção safra | `PEDE_SAFRA` | `coletando_safra` |
 | `menu` | "2" / intenção reforma | `PERGUNTA_TIPO_PESSOA` | `coletando_perfil` |
 | `menu` | "3" / pede pessoa | `ENCAMINHAMENTO` | `menu` |
-| `coletando_safra` | texto ou áudio | extrair → mesclar em `dados.safra` → faltou campo? pergunta 1 campo : `CONFIRMA_DADOS` | `coletando_safra` ou `confirmando_safra` |
+| `coletando_safra` | texto (áudio na Etapa 5) | extrair → mesclar em `dados.safra` → faltou campo? pergunta 1 campo : `CONFIRMA_DADOS` | `coletando_safra` ou `confirmando_safra` |
 | `confirmando_safra` | sim | calcular → `RESULTADO_SAFRA` + `OFERTA_PROXIMO` | `resultado_safra` |
 | `confirmando_safra` | correção | extrair e mesclar → `CONFIRMA_DADOS` | `confirmando_safra` |
 | `resultado_safra` | "e se ..." | extrair alteração → recalcular → `RESULTADO_SAFRA` | `resultado_safra` |
@@ -88,7 +88,7 @@ Dica: o roteamento por números do menu e palavras-chave é feito no Code node, 
 | qualquer | "painel" | gera token → `LINK_PAINEL` | mantém |
 | qualquer | "manda em áudio" / "só texto" | liga ou desliga `responde_audio` | mantém |
 
-Áudio de entrada liga `responde_audio` automaticamente (a IAra responde no mesmo formato).
+Etapa 5: áudio de entrada liga `responde_audio` automaticamente (a IAra responde no mesmo formato). Antes disso, áudio recebe `AUDIO_AINDA_NAO` e o estado não muda.
 
 Campos obrigatórios da safra: `area`, `custo_total`, `produtividade_esperada`, `preco`. Cultura é opcional (padrão "safra").
 
@@ -113,14 +113,20 @@ Ver `db/schema.sql`. Tabelas: `config`, `conversa`, `mensagem`, `resposta`, `enc
 | --- | --- | --- |
 | Enviar texto | `POST {EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE}` (header `apikey`) | `{ "number": "5544...", "text": "..." }` |
 | Enviar nota de voz | `POST {EVOLUTION_URL}/message/sendWhatsAppAudio/{EVOLUTION_INSTANCE}` | `{ "number": "5544...", "audio": "<url ou base64>" }` |
-| Sintetizar voz | `POST {LLM_BASE_URL}/audio/speech` | `model`, `voice`, `input`, `response_format` (`mp3` ou `opus`) |
+| Sintetizar voz (Etapa 5) | `POST {AUDIO_BASE_URL}/audio/speech` | `model`, `voice`, `input`, `response_format` (`mp3` ou `opus`) |
 | Mídia em base64 | `POST {EVOLUTION_URL}/chat/getBase64FromMediaMessage/{EVOLUTION_INSTANCE}` | `{ "message": { "key": { "id": "<message_id>" } } }` |
-| Transcrever | `POST {LLM_BASE_URL}/audio/transcriptions` (multipart) | `file`, `model`, `language=pt` |
-| LLM | `POST {LLM_BASE_URL}/chat/completions` | `model`, `messages`, `response_format` |
+| Transcrever (Etapa 5) | `POST {AUDIO_BASE_URL}/audio/transcriptions` (multipart) | `file`, `model`, `language=pt` |
+| Chat (LLM) | `POST {LLM_BASE_URL}/chat/completions` (header `Authorization: Bearer {LLM_API_KEY}`) | `model` = `LLM_MODEL_CHAT`, `messages`, `response_format` |
 | Geocodificar | `GET https://geocoding-api.open-meteo.com/v1/search?name=Mandaguari&count=1&language=pt` | — |
 | Previsão | `GET https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=America/Sao_Paulo&forecast_days=5` | — |
 
 Conferir os corpos exatos na documentação da versão instalada antes de codar.
+
+### 7.1 Provedor de chat provisório (Gemini → OpenAI)
+- Hoje o chat roda no Gemini pela API compatível com a OpenAI (`LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/`). É **provisório**: depois a conversa vai para a OpenAI.
+- Regra de código: usar só o formato OpenAI (`POST /chat/completions`, `messages`, `response_format: {type: "json_object"}`, `temperature`). Nada de campos, rotas ou SDK do Gemini. O JSON de extração é validado no n8n, não confiado ao provedor.
+- Troca = mudar `LLM_BASE_URL`, `LLM_API_KEY` e `LLM_MODEL_CHAT` no `.env` e rodar os Roteiros A a D de novo. Se algo exigir mais que isso, é bug de acoplamento: corrigir no fluxo, não no provedor.
+- O áudio (transcrição e voz) é outro provedor e outras variáveis (`AUDIO_*`, OpenAI): não é afetado pela troca.
 
 ## 8a. Alerta simulado do Núcleo: `agro-zap-alerta-demo`
 

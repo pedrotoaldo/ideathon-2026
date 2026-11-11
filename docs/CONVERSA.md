@@ -9,7 +9,7 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **BOAS_VINDAS**
 > Oi! Eu sou a IAra, assistente virtual do Agro na Medida, em demonstração no Ideathon Mandaguari 2026.
 > Ajudo a fazer a conta da safra, a entender a reforma tributária e aviso quando o preço da saca chegar onde você quer.
-> Pode falar comigo por texto ou por áudio.
+> Por enquanto, me escreva por texto.
 > Use dados de exemplo: não mande CPF, CNPJ nem dados bancários. Para apagar a conversa, escreva "apagar meus dados".
 
 **MENU**
@@ -18,7 +18,7 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > 2. Entender a reforma tributária
 > 3. Falar com uma pessoa
 > 4. Criar um alerta de preço da saca
-> Pode responder com o número ou mandar um áudio.
+> Pode responder com o número ou escrever.
 
 **PEDE_SAFRA**
 > Vamos fazer a conta. Me conte, do seu jeito: quantos hectares ou alqueires, quanto vai gastar no total, quantas sacas por hectare espera colher e o preço da saca.
@@ -95,7 +95,10 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 > Eu só ajudo com a conta da safra e com a reforma tributária para o produtor. Escreva "menu" para ver as opções.
 
 **SO_TEXTO_AUDIO**
-> Por enquanto eu entendo texto e áudio. Pode me mandar a pergunta assim?
+> Por enquanto eu entendo só texto. Pode me mandar a pergunta escrita?
+
+**AUDIO_AINDA_NAO** (usado até a Etapa 5 do PLAN; depois a IAra passa a transcrever)
+> Por enquanto eu entendo só texto. Pode escrever?
 
 **LIMITE**
 > Recebi muitas mensagens seguidas. Me dá uns minutinhos e tenta de novo.
@@ -141,10 +144,10 @@ Os textos abaixo marcados com (Plus) só entram nas Fases Plus.
 > Aqui está o painel da sua safra, com os números em gráfico: {link}
 > O link vale por 7 dias e é só seu. Não compartilhe.
 
-**AUDIO_LIGADO** (Plus 1)
+**AUDIO_LIGADO** (Etapa 5)
 > Combinado, vou responder em áudio também. Os números continuam indo por escrito.
 
-**AUDIO_DESLIGADO** (Plus 1)
+**AUDIO_DESLIGADO** (Etapa 5)
 > Certo, daqui pra frente só texto. Se quiser áudio de novo, escreva "manda em áudio".
 
 **RESUMO**
@@ -164,14 +167,16 @@ Os textos abaixo marcados com (Plus) só entram nas Fases Plus.
 | clima | "clima", "tempo", "chuva", "previsão do tempo", "temperatura" |
 | gatilho | "4", "me avisa quando", "alerta de preço", "avisa se passar", "meus alertas", "cancelar alerta" |
 | painel (Plus 4) | "painel", "gráfico", "ver minha safra" |
-| audio (Plus 1) | "manda em áudio", "responde em áudio", "só texto", "sem áudio" |
+| audio (Etapa 5) | "manda em áudio", "responde em áudio", "só texto", "sem áudio" |
 | resumo | "resumo" |
 | apagar | "apagar meus dados", "apaga meus dados" |
 | fora_escopo | o LLM classifica como fora quando nenhuma regra bate e não há fluxo ativo |
 
 Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gatilho`, `aguardando_resposta_alerta`), toda mensagem é tratada como resposta do fluxo, exceto "menu", "3" e "apagar meus dados".
 
-## 2.1 Áudio de resposta (Plus 1, ou Etapa 4 se sobrar tempo)
+## 2.1 Áudio (Etapa 5 do PLAN; OpenAI)
+- Até a Etapa 5, qualquer áudio recebido responde `AUDIO_AINDA_NAO`.
+- Depois: o áudio do produtor é transcrito (`AUDIO_MODEL_TRANSCRICAO`) e tratado como texto, mostrando "Entendi: ...".
 - A IAra responde em áudio quando a mensagem recebida foi áudio, ou depois de "manda em áudio".
 - O áudio é curto (até ~25 s): para a conta da safra, usa `montarResumoFalado`; para os demais textos, o próprio texto quando tiver até ~400 caracteres, senão só o texto.
 - Ordem: áudio primeiro, texto logo depois (os números sempre por escrito).
@@ -187,8 +192,8 @@ Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gat
 5. "e se eu colher 20% menos, fico no prejuízo?" → começa com "Não"; 480 sacas; receita R$ 48.000; sobram R$ 3.000; equilíbrio R$ 93,75
 6. "e se a saca for 70?" → faltam R$ 3.000 no esperado (600 × 70 = 42.000)
 
-**Roteiro B — Conta da safra por áudio e em alqueire**
-1. Áudio: "plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez"
+**Roteiro B — Conta da safra por áudio e em alqueire** (por texto antes da Etapa 5: digitar a mesma frase; antes de existir áudio, um áudio recebe `AUDIO_AINDA_NAO`)
+1. Áudio (Etapa 5): "plantei vinte alqueires de soja, vou gastar uns cento e oitenta mil, espero sessenta sacas por hectare e a saca tá cento e dez"
 2. → "Entendi: ..." com 48,4 ha (20 alqueires), R$ 180.000, 60 sc/ha, R$ 110
 3. "sim" → mínimo ≈ 33,8 sc/ha; custo por saca ≈ R$ 61,98; esperado: sobram ≈ R$ 139.440
 
@@ -227,7 +232,7 @@ Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gat
 6. "sim" → ALERTA_RESPOSTA_SIM e registro em `encaminhamento`
 7. "me avisa quando a soja passar de 5" → recusa por faixa e pede outro valor
 
-**Roteiro F — Áudio de ida e volta e painel (Plus 1 e Plus 4)**
+**Roteiro F — Áudio de ida e volta e painel (Etapa 5; o painel é Plus 4)**
 1. Áudio: "tenho dez hectares, gastei quarenta e cinco mil, espero sessenta sacas, saca a cem" → confirmação
 2. Áudio: "isso" → recebe áudio curto (resumo falado) e, logo depois, o texto RESULTADO_SAFRA
 3. "só texto" → AUDIO_DESLIGADO; próxima resposta sem áudio

@@ -1,12 +1,17 @@
-# Prompt — extração de dados da safra e do alerta de preço (v1.1)
+# Prompt — extração de dados da safra e do alerta de preço (v1.2)
 
-Uso: nó HTTP "Extração" com `response_format` = JSON Schema abaixo, temperatura 0.
+Uso: nó HTTP "Extração" em `POST {LLM_BASE_URL}/chat/completions`, temperatura 0, com `response_format: {"type": "json_object"}`.
+
+**Compatível com Gemini (provisório) e OpenAI.** O schema abaixo vai **dentro da mensagem de sistema** (como texto) e é a referência para a validação no n8n. Não use `json_schema`/`strict`: os dois provedores tratam tipos nulos (`["string","null"]`) e `additionalProperties` de formas diferentes. Depois da resposta, o n8n faz `JSON.parse`, confere os campos e tipos, e trata campo ausente como `null`. Ao migrar para a OpenAI, `json_schema` com `strict` pode ser avaliado, mas só vale a pena se os Roteiros A a D passarem iguais e sem mudar o fluxo.
+
+No bloco abaixo, o envelope `name`/`strict` é só do formato `json_schema` e **não** é enviado: use o conteúdo de `schema` como descrição dos campos.
+
 Entrada do usuário: `{texto}` (mensagem ou transcrição). Contexto: `{dados_atuais}` (JSON do que já foi coletado).
 
 ## Mensagem de sistema
 
 Você extrai dados de uma safra a partir da mensagem de um produtor rural brasileiro.
-Responda somente com JSON válido no schema fornecido. Não calcule nada. Não invente valores.
+Responda somente com um objeto JSON válido, com exatamente os campos do schema abaixo, sem texto antes ou depois e sem cercas de código. Não calcule nada. Não invente valores.
 
 Regras:
 - Use null para qualquer campo que a mensagem não informe claramente.
@@ -19,7 +24,7 @@ Regras:
 - Se a mensagem pede alerta de preço ("me avisa quando a soja passar de 110"), preencha `gatilho_preco` com o preço e `cultura` com a cultura citada.
 - Se a mensagem não tem nada a ver com safra, `fora_do_tema` = true.
 
-## JSON Schema
+## JSON Schema (referência: vai no texto do prompt e valida no n8n)
 
 ```json
 {
@@ -70,4 +75,5 @@ Regras:
 
 ## Validação no n8n (depois do LLM)
 - Faixas plausíveis (fora delas, perguntar de novo em vez de calcular): área 0,1 a 100.000 ha; custo 100 a 500.000.000; produtividade 1 a 200 sc/ha; preço 10 a 1.000 R$/sc.
-- JSON inválido → perguntar o campo que falta com `PERGUNTA_CAMPO`.
+- JSON inválido, campo com tipo errado ou valor fora das faixas → perguntar o campo que falta com `PERGUNTA_CAMPO`.
+- Antes de `JSON.parse`, remover cercas ```json se o modelo as devolver.

@@ -3,8 +3,8 @@
 IAra é a assistente virtual do Agro na Medida no WhatsApp para pequenos produtores de Mandaguari. Ideathon Mandaguari 2026, Desafio Agro.
 
 O kit tem duas partes:
-- **Núcleo** (`docs/PLAN.md`): o protótipo funcional da banca. Conta da safra, perfil na reforma tributária, alerta de preço simulado, texto e áudio de entrada. Cerca de 6 horas de implementação mais o ensaio.
-- **Fases Plus** (`docs/FASES_PLUS.md`): o que ficou para depois, já especificado: IAra respondendo em áudio, gatilho de preço automático, webapp com painéis, Redis (fila e agrupamento de mensagens), extras e piloto.
+- **Núcleo** (`docs/PLAN.md`): o protótipo funcional da banca. Conta da safra, perfil na reforma tributária, alerta de preço simulado, texto (áudio, em OpenAI, na Etapa 5). Cerca de 6 horas de implementação mais o ensaio.
+- **Fases Plus** (`docs/FASES_PLUS.md`): o que ficou para depois, já especificado: gatilho de preço automático, webapp com painéis, Redis (fila e agrupamento de mensagens), extras e piloto.
 
 ## Começar no Claude Code
 1. Abra esta pasta no Claude Code e selecione o **Sonnet** com `/model`.

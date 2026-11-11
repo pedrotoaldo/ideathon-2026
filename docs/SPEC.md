@@ -9,7 +9,7 @@ Pôr no ar, até a banca de 11/11/2026, um número de WhatsApp que qualquer pess
 - aguenta dezenas de pessoas ao mesmo tempo sem cair, sair do escopo ou vazar dados;
 - aceita o pedido de alerta de preço e avisa quando a equipe dispara a cotação (simulado na demo).
 
-Depois do protótipo (`docs/FASES_PLUS.md`): responder em áudio, gatilho automático, painel web da safra e painel da demo, Redis, piloto.
+Depois do protótipo (`docs/FASES_PLUS.md`): gatilho automático, painel web da safra e painel da demo, Redis, piloto.
 
 ## 2. Fora do objetivo agora
 Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integração com sistemas da cooperativa; simulação tributária em reais; diagnóstico de lavoura (só encaminha ao agrônomo); WhatsApp Cloud API oficial (fica para o piloto).
@@ -27,8 +27,7 @@ Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integraçã
 | Fase | Requisitos |
 | --- | --- |
 | Núcleo | F01 a F13, F17, e F20 + F22 + F23 na versão **simulada** (pedido salvo em `conversa.dados.alerta`, disparo manual no n8n) |
-| Núcleo, se sobrar tempo | F18 e F19 (áudio de resposta) |
-| Plus 1 | F18, F19 |
+| Núcleo, Etapa 5 (áudio, OpenAI, só depois do texto estável) | F02, F18 e F19. Até a Etapa 5, áudio recebido responde `AUDIO_AINDA_NAO` |
 | Plus 2 | F20 a F23 automáticos, F21 |
 | Plus 3 | F25, F26 |
 | Plus 4 | F24 |
@@ -39,7 +38,7 @@ Tudo de `docs/FASES_PLUS.md`, além de: App nativo; login com senha; integraçã
 | ID | Requisito | Prioridade | Critério de aceite |
 | --- | --- | --- | --- |
 | F01 | Receber texto via webhook da Evolution API e responder no mesmo número | P0 | Mensagem respondida em até 10 s (texto) |
-| F02 | Receber áudio, transcrever e tratar como texto | P0 | Áudio de até 60 s respondido em até 20 s; mostrar "Entendi: <transcrição>" |
+| F02 | Receber áudio, transcrever e tratar como texto (**Etapa 5**; antes disso: "Por enquanto eu entendo só texto. Pode escrever?") | P0 | Áudio de até 60 s respondido em até 20 s; mostrar "Entendi: <transcrição>" |
 | F03 | Boas-vindas + aviso de demo + aviso de privacidade no primeiro contato | P0 | Usuário novo sempre recebe `BOAS_VINDAS` de `docs/CONVERSA.md` |
 | F04 | Menu com 3 caminhos: Conta da safra, Reforma tributária, Falar com uma pessoa | P0 | Responde a "1", "2", "3", "menu" e à intenção em texto livre |
 | F05 | Extrair cultura, área, unidade, custo total, produtividade esperada e preço da mensagem | P0 | JSON válido no schema de `prompts/extracao_safra.md`; campos ausentes = null |
@@ -112,7 +111,7 @@ Entradas: área (ha), custo total (R$), produtividade esperada (sc/ha), preço (
 Ver `content/reforma_tributaria_base.md`. Pontos: não contribuinte abaixo de R$ 3,6 mi de receita anual (atualizado pelo IPCA) e integrado; opção pelo regime regular; regra antifragmentação; crédito presumido para o comprador e para a cooperativa; regime opcional das cooperativas. **Conteúdo pendente de revisão por contador antes da banca.**
 
 ## 8. Critérios de aceite da demo
-1. Roteiro A (conta da safra por texto) e Roteiro B (por áudio) de `docs/CONVERSA.md` passam.
+1. Roteiro A (conta da safra por texto) e Roteiro B (por áudio, Etapa 5) de `docs/CONVERSA.md` passam.
 2. Roteiro C (reforma) nunca recomenda regime; termina com checklist.
 3. Roteiro D (abuso: prompt injection, xingamento, assunto aleatório, flood) é contido.
 4. 30 mensagens simultâneas de números diferentes respondidas sem erro.
@@ -121,9 +120,9 @@ Ver `content/reforma_tributaria_base.md`. Pontos: não contribuinte abaixo de R$
 7. (Plus) Roteiros E e F, painel da demo e painel do produtor.
 
 ## 9. Perguntas em aberto
-- Modelo de IA: OpenAI (latência e qualidade) ou Ollama local (custo zero, mais lento com a plateia)? Recomendação: OpenAI na demo, Ollama como fallback.
-- Transcrição: Whisper da OpenAI ou local?
+- Modelo de chat: **decidido (provisório)** Gemini pela API compatível com a OpenAI; depois OpenAI. A troca é só pelo `.env` (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`) e exige rodar os Roteiros A a D de novo. Ollama fica como fallback.
+- Transcrição e voz: **decidido** OpenAI, em variáveis próprias (`AUDIO_*`), só na Etapa 5.
 - Quem é o número da demo (chip dedicado)?
 - Contador que revisa a base tributária até a banca.
-- Voz da IAra: TTS da OpenAI (`gpt-4o-mini-tts` ou `tts-1`) ou outra? Testar a pronúncia de "R$ 93,75" e de "sacas por hectare".
+- Voz da IAra: modelo de TTS da OpenAI (`AUDIO_MODEL_TTS`, ex.: `gpt-4o-mini-tts` ou `tts-1`). Testar a pronúncia de "R$ 93,75" e de "sacas por hectare".
 - Fonte de cotação no piloto: tabela da cooperativa parceira (na demo, lançamento manual pelo admin).

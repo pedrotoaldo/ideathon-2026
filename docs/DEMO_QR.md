@@ -17,12 +17,13 @@ Objetivo: a banca e a plateia escaneiam o QR, conversam com a IAra e tudo funcio
 ## 3. Plano B (preparar antes)
 | Falha | Plano B |
 | --- | --- |
-| Bot fora do ar ou lento | Vídeo gravado da demo (Etapa 5 do PLAN) |
+| Bot fora do ar ou lento | Vídeo gravado da demo (Etapa 6 do PLAN) |
 | Número banido ou desconectado | Segunda instância com outro chip já conectada + slide com o segundo QR |
 | LLM fora ou sem saldo | Fluxo segue pelo menu numérico e cálculo (não depende do LLM) |
 | Internet do servidor cai | Celular do apresentador com o vídeo offline |
 | Áudio do iPhone falha | Pedir para escrever; testado antes (ARCHITECTURE seção 3) |
-| Voz da IAra (TTS) falha, se a Plus 1 estiver ativa | A IAra responde só por texto automaticamente |
+| Chat (Gemini, provisório) fora ou sem cota | Menu numérico continua; se for trocar para a OpenAI, mudar só o `.env` e rodar os Roteiros A a D |
+| Voz da IAra (TTS) ou transcrição (OpenAI) falha | A IAra responde só por texto automaticamente |
 | Alerta não chega | Mostrar o print do alerta gravado no ensaio; conferir `conversa.dados.alerta` |
 
 ## 4. Checklist

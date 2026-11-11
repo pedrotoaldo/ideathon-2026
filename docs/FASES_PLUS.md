@@ -6,7 +6,7 @@ O protótipo do Ideathon é o **Núcleo** (`docs/PLAN.md`). Tudo aqui ficou de f
 
 | Fase | O que é | Na demo do Ideathon | Esforço | Depende de |
 | --- | --- | --- | --- | --- |
-| Plus 1 | IAra responde em áudio | Opcional no Núcleo (Etapa 4), se sobrar tempo | 45 min | Núcleo |
+| Plus 1 | IAra responde em áudio | **Movida para o Núcleo, Etapa 5** (junto da transcrição, OpenAI). Nada a fazer aqui | — | — |
 | Plus 2 | Gatilho de preço real | Simulado por disparo manual no n8n | 1 h 30 | Núcleo |
 | Plus 3 | Webapp: painel da demo + admin de cotação | Cortado (painel vira slide) | 1 h 30 | Plus 2 para o admin |
 | Plus 4 | Webapp: painel do produtor | Cortado (o vídeo de demonstração mostra a ideia) | 1 h | Plus 3 |
@@ -16,9 +16,10 @@ O protótipo do Ideathon é o **Núcleo** (`docs/PLAN.md`). Tudo aqui ficou de f
 
 ---
 
-## Plus 1 — IAra responde em áudio (SPEC F18, F19, N11)
+## Plus 1 — IAra responde em áudio (SPEC F18, F19, N11) — movida para a Etapa 5 do Núcleo
+Mantida aqui só como referência técnica; os passos são os da Etapa 5 do `docs/PLAN.md`. Variáveis: `AUDIO_*` (não mais `LLM_MODEL_TTS`).
 - Sub-workflow "Responder": envia o texto e, se `conversa.responde_audio`, gera o áudio antes.
-- TTS: `POST {LLM_BASE_URL}/audio/speech` com o `texto_falado` (`montarResumoFalado` em `safra.cjs` para a conta da safra; para outros textos, o próprio texto se tiver até ~400 caracteres).
+- TTS: `POST {AUDIO_BASE_URL}/audio/speech` com o `texto_falado` (`montarResumoFalado` em `safra.cjs` para a conta da safra; para outros textos, o próprio texto se tiver até ~400 caracteres).
 - Envio: `POST /message/sendWhatsAppAudio/{instance}` com `{ number, audio: <base64> }`; a Evolution converte para nota de voz.
 - Ordem: áudio primeiro, texto com os números depois. Falha no TTS → só texto.
 - Comandos "manda em áudio" e "só texto" (textos `AUDIO_LIGADO` e `AUDIO_DESLIGADO` em `docs/CONVERSA.md`).

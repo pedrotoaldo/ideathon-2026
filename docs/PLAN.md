@@ -8,29 +8,30 @@ Regra: terminar e testar cada etapa antes de abrir a próxima. Sessão principal
 | --- | --- | --- |
 | 0 | Infra no ar + cálculo pronto no n8n | 1 h |
 | 1 | Fluxo base: recebe, filtra, deduplica, limita, responde, boas-vindas e menu | 1 h |
-| 2 | Conta da safra ponta a ponta (texto e áudio de entrada) | 2 h |
+| 2 | Conta da safra ponta a ponta (só texto) | 2 h |
 | 3 | Reforma tributária + proteção contra a plateia | 1 h 30 |
-| 4 | Alerta de preço simulado (+ IAra em áudio, se sobrar tempo) | 30 a 60 min |
-| 5 | Ensaio e plano B | 1 h |
+| 4 | Alerta de preço simulado | 30 min |
+| 5 | Áudio: transcrição e voz da IAra (OpenAI) | 1 h |
+| 6 | Ensaio e plano B | 1 h |
 
 Real × simulado na demo:
 | Item | Na demo |
 | --- | --- |
-| Conversa por texto e áudio, conta da safra, perfil tributário, checklist | Real |
+| Conversa por texto (provedor de chat **provisório**, Gemini; a troca para OpenAI é só pelo `.env`), conta da safra, perfil tributário, checklist | Real |
+| Áudio: transcrição do produtor e voz da IAra (OpenAI) | Real, mas só na Etapa 5. Até lá, áudio recebe `AUDIO_AINDA_NAO` ("Por enquanto eu entendo só texto. Pode escrever?") |
 | Alerta de preço | Simulado: o pedido é real e fica salvo; a cotação é digitada pela equipe num disparo manual do n8n |
 | Painel da safra | Slide ou o vídeo de demonstração (Plus 3 e 4) |
-| IAra respondendo em áudio | Real se a Etapa 4 couber; senão, Plus 1 |
 
 ## Etapa 0 — Infra e cálculo
-- [ ] Copiar `.env.example` para `.env` e preencher
+- [ ] Copiar `.env.example` para `.env` e preencher (feito: `.env` criado com segredos gerados e localhost; falta `LLM_*`, `N8N_WEBHOOK_URL` real e `DEMO_NUMERO_WHATSAPP`)
 - [ ] `docker compose up -d` (Evolution API, Postgres, Redis)
 - [ ] `psql "$DATABASE_URL" -f db/schema.sql` (só o Núcleo; `schema_plus.sql` fica para depois)
 - [ ] Criar instância na Evolution (`integration: WHATSAPP-BAILEYS`), ler o QR com o **chip dedicado da demo** e apontar o webhook (`MESSAGES_UPSERT`) para o n8n
-- [ ] `npm test` verde e `npm run build:n8n`; colar `n8n/code-nodes/calcular_safra.js` num Code node "Calcular safra"
+- [ ] `npm test` verde e `npm run build:n8n` (feitos, 14/14); colar `n8n/code-nodes/calcular_safra.js` num Code node "Calcular safra"
 
 ## Etapa 1 — Fluxo base no n8n
 - [ ] Webhook → normalizar payload (número, tipo, texto, id, fromMe, grupo)
-- [ ] Descartar `fromMe`, grupos, status e mídias que não sejam texto ou áudio (`SO_TEXTO_AUDIO`)
+- [ ] Descartar `fromMe`, grupos, status e mídias que não sejam texto (`SO_TEXTO_AUDIO`); **áudio** responde `AUDIO_AINDA_NAO` até a Etapa 5
 - [ ] Idempotência pelo `message_id` em `mensagem`
 - [ ] Kill switch (`config.bot_ativo`) e limite por número (20 mensagens em 10 min)
 - [ ] Carregar ou criar `conversa`; primeiro contato → `BOAS_VINDAS` + `MENU`
@@ -39,11 +40,10 @@ Real × simulado na demo:
 
 ## Etapa 2 — Conta da safra
 - [ ] Roteador por regra (números do menu e palavras-chave de `docs/CONVERSA.md`); LLM só quando ambíguo
-- [ ] Áudio: `getBase64FromMediaMessage` → transcrição → segue como texto (testar com iPhone)
-- [ ] Extração com `prompts/extracao_safra.md`, validação de faixas, pergunta um campo por vez
+- [ ] Extração com `prompts/extracao_safra.md` via `chat/completions` + `response_format: json_object` (Gemini por ora), validação do JSON e das faixas no n8n, pergunta um campo por vez
 - [ ] Estados `coletando_safra` → `confirmando_safra` → `resultado_safra`; alqueire convertido para ha
 - [ ] Resposta com `RESULTADO_SAFRA`; "e se..." com `calcularESe`
-- [ ] Roteiros A e B de `docs/CONVERSA.md`
+- [ ] Roteiro A de `docs/CONVERSA.md` e a parte em alqueire do Roteiro B (por texto, sem áudio)
 
 ## Etapa 3 — Reforma tributária e proteção
 - [ ] Perguntas do perfil (tipo de pessoa, receita, integrado, outra empresa) → `perfilProvavel` → `PERFIL_RESULTADO` + `CHECKLIST`
@@ -51,16 +51,24 @@ Real × simulado na demo:
 - [ ] Fora de escopo e prompt injection; texto acima de 800 caracteres recusado; LLM falhou → `ERRO_TEMPORARIO` e menu numérico
 - [ ] Encaminhamento humano ("3")
 - [ ] Roteiros C e D
+- [ ] Provedor de chat trocável só pelo `.env` (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`): ao trocar para a OpenAI, rodar os Roteiros A a D de novo
 - [ ] Gerar o QR `https://wa.me/55DDDNUMERO?text=Oi%20IAra`
 
-## Etapa 4 — Alerta simulado (+ áudio opcional)
+## Etapa 4 — Alerta simulado
 - [ ] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`
 - [ ] Workflow `agro-zap-alerta-demo` com **Manual Trigger** (ou formulário do n8n) com campos cultura e preço: busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → envia → marca `ativo: false` antes de enviar (aviso único)
 - [ ] Resposta "sim"/"não" ao alerta → `ALERTA_RESPOSTA_SIM` (cria `encaminhamento`) ou `ALERTA_RESPOSTA_NAO`
 - [ ] Roteiro E-simulado
-- [ ] Opcional, se sobrar tempo: IAra responde em áudio (Plus 1)
 
-## Etapa 5 — Ensaio
+## Etapa 5 — Áudio (OpenAI), só depois de a conversa por texto estar estável
+Usa `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO` e `AUDIO_MODEL_TTS`, separados do `LLM_*`.
+- [ ] Entrada: `getBase64FromMediaMessage` → `POST {AUDIO_BASE_URL}/audio/transcriptions` → "Entendi: ..." → segue como texto (testar com iPhone, `docs/ARCHITECTURE.md` seção 3); o `AUDIO_AINDA_NAO` sai do fluxo
+- [ ] Saída: `POST {AUDIO_BASE_URL}/audio/speech` com o resumo falado (`montarResumoFalado`) → `sendWhatsAppAudio`; áudio primeiro, texto com os números logo depois; falha no TTS → só texto
+- [ ] Comandos "manda em áudio" e "só texto" (`AUDIO_LIGADO`, `AUDIO_DESLIGADO`); áudio de entrada liga o áudio de resposta
+- [ ] Roteiro B por áudio e Roteiro F, passos 1 a 3
+- [ ] Restaurar `BOAS_VINDAS` e `MENU` em `docs/CONVERSA.md` para voltar a oferecer áudio
+
+## Etapa 6 — Ensaio
 - [ ] Ensaio com cronômetro seguindo `docs/DEMO_QR.md`
 - [ ] Teste rápido de carga: 20 a 30 mensagens de números diferentes
 - [ ] Gravar vídeo da demo funcionando, com o alerta chegando (plano B)
@@ -71,5 +79,5 @@ Real × simulado na demo:
 Para economizar o limite do plano, o Núcleo usa pouco subagente:
 - `calc-engenheiro` só se precisar mexer no cálculo.
 - `qa-conversa` uma vez ao fim da Etapa 3 (Roteiros A a D).
-- `revisor-guardrails` uma vez na Etapa 5.
+- `revisor-guardrails` uma vez na Etapa 6.
 - `planejador`, `conselheiro`, `implementador`, `revisor-codigo` e `webapp-dev` ficam para as Fases Plus.

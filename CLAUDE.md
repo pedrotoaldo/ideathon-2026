@@ -3,14 +3,14 @@
 ## O que é
 **IAra** é a assistente virtual do Agro na Medida no WhatsApp, para pequenos produtores rurais de Mandaguari (Ideathon Mandaguari 2026, Desafio Agro).
 
-**Escopo atual = Núcleo do protótipo** (`docs/PLAN.md`). O produtor manda texto ou áudio e a IAra responde:
+**Escopo atual = Núcleo do protótipo** (`docs/PLAN.md`). O produtor manda texto (áudio só na Etapa 5 do PLAN) e a IAra responde:
 1. **Conta da safra:** custo por hectare, custo por saca, produtividade mínima, preço de equilíbrio e 3 cenários.
 2. **Reforma tributária:** perfil provável (LC 214/2025), explicação simples e checklist para o contador.
 3. **Alerta de preço simulado:** o produtor pede o aviso; na demo, a equipe dispara a cotação pelo n8n.
 
 Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao vivo. Robustez da demo é prioridade.
 
-**Fases Plus** (`docs/FASES_PLUS.md`): áudio de resposta, gatilho real, webapp, Redis, extras e piloto. **Não implemente nada das Fases Plus sem pedido explícito** ("implemente a Plus 2").
+**Fases Plus** (`docs/FASES_PLUS.md`): gatilho real, webapp, Redis, extras e piloto. **Não implemente nada das Fases Plus sem pedido explícito** ("implemente a Plus 2").
 
 ## Leia antes de codar
 | Arquivo | Para quê |
@@ -35,8 +35,12 @@ Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao v
 6. **Sem previsão de colheita ou de preço.**
 7. **Demo pública:** não pedir CPF, CNPJ, dados bancários ou nomes reais. Incentivar dados de exemplo.
 8. **A IAra sempre se apresenta como assistente virtual.** Nunca finge ser pessoa.
-9. **Áudio nunca substitui o texto quando há números** (se a Plus 1 for feita).
+9. **Áudio nunca substitui o texto quando há números** (Etapa 5 do PLAN).
 10. **Todo texto para o usuário em português do Brasil**, frases curtas, linguagem de produtor.
+
+## Provedores de IA (duas divisões independentes)
+- **Chat** (conversa, extração da safra, redator tributário): `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_CHAT`. **Provisório: Gemini**, pela API compatível com a OpenAI; depois vai para a OpenAI. Use só `chat/completions` e `response_format` (formato OpenAI), nada específico do Gemini. A troca deve exigir só mudar essas 3 variáveis e rodar os Roteiros A a D de novo.
+- **Áudio** (transcrição e voz da IAra): OpenAI, `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO`, `AUDIO_MODEL_TTS`. Transcrição em `POST {AUDIO_BASE_URL}/audio/transcriptions`, voz em `POST {AUDIO_BASE_URL}/audio/speech`. **Só entra na Etapa 5 do PLAN**; até lá, áudio recebido responde "Por enquanto eu entendo só texto. Pode escrever?".
 
 ## Convenções
 - Código JS (Node 21+). `src/calc/safra.cjs` não tem dependências nem `import`/`export`, porque é colado no Code node do n8n. Depois de mudar, rode `npm run build:n8n`.
@@ -62,7 +66,7 @@ Sessão principal no **Sonnet**. No Núcleo, use pouco subagente (cada um começ
 | --- | --- | --- |
 | `calc-engenheiro` | sonnet | Núcleo, só se mexer no cálculo |
 | `qa-conversa` | sonnet | Núcleo, uma vez ao fim da Etapa 3 |
-| `revisor-guardrails` | fable | Núcleo, uma vez na Etapa 5 (antes da banca) |
+| `revisor-guardrails` | fable | Núcleo, uma vez na Etapa 6 (antes da banca) |
 | `planejador` | opus | Fases Plus |
 | `conselheiro` | opus | Fases Plus, só com decisão de verdade |
 | `implementador` | sonnet | Fases Plus |
@@ -74,4 +78,4 @@ Se o Fable não estiver disponível na conta, troque `model: fable` por `model: 
 Fluxo nas Fases Plus: `planejador` → (`conselheiro` se houver decisão) → implementação → `revisor-codigo` → `qa-conversa`.
 
 ## Definição de pronto para a demo
-Etapas 0 a 5 do `docs/PLAN.md` marcadas, `npm test` verde e `revisor-guardrails` sem bloqueios.
+Etapas 0 a 6 do `docs/PLAN.md` marcadas, `npm test` verde e `revisor-guardrails` sem bloqueios.

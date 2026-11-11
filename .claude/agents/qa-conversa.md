@@ -11,7 +11,7 @@ Como testar:
 1. Leia `docs/CONVERSA.md` (roteiros e textos fixos) e `docs/SPEC.md` (seção 6, valores esperados).
 2. Se `N8N_WEBHOOK_URL` estiver no `.env`, envie payloads simulando o evento `MESSAGES_UPSERT` da Evolution API com um número fictício por roteiro (ex.: 5500000000001). Crie e use `scripts/simular_mensagem.mjs` se ainda não existir. Leia as respostas na tabela `resposta` do Postgres (`DATABASE_URL`).
 3. Se não houver acesso ao webhook, peça ao agente principal as transcrições e avalie-as.
-4. Para carga (Etapa 5), crie `scripts/carga.mjs` que dispara 30 mensagens simultâneas de números diferentes e confira que todas tiveram resposta.
+4. Para carga (Etapa 6), crie `scripts/carga.mjs` que dispara 30 mensagens simultâneas de números diferentes e confira que todas tiveram resposta.
 
 Regras:
 - Números devem bater com a SPEC centavo a centavo.
