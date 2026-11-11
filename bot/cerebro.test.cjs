@@ -79,10 +79,10 @@ test('pergunta um campo por vez, na ordem', async () => {
 
 test('área sem unidade: pergunta hectare ou alqueire, sem chamar o LLM de novo', async () => {
   const extrair = llm({ area_valor: 20, area_unidade: null });
-  let p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: {} } }, '20', extrair);
+  let p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } }, '20', extrair);
   assert.match(p.texto, /20 são hectares ou alqueires/);
   p = await passo(p.conv, 'alqueires', extrair);
-  assert.equal(extrair.chamadas.length, 1);
+  assert.equal(extrair.chamadas.length, 0); // número solto + unidade: resolvido sem LLM
   assert.equal(p.conv.dados.safra.area_ha, 48.4);
 });
 
@@ -157,7 +157,7 @@ test('parse do JSON do LLM tolera cercas e rejeita lixo', () => {
 });
 
 test('LLM que repete a área já coletada não apaga o "alqueires" da confirmação', async () => {
-  let p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: {} } }, '20', llm({ area_valor: 20, area_unidade: null }));
+  let p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: { campo_pedido: 'area_ha' } } }, '20', llm({ area_valor: 20, area_unidade: null }));
   p = await passo(p.conv, 'alqueires', llm());
   p = await passo(p.conv, 'uns 90 mil', llm({ custo_total: 90000, area_valor: 48.4, area_unidade: 'ha' }));
   assert.equal(p.conv.dados.safra.area_origem.valor, 20);
@@ -178,4 +178,102 @@ test('"apagar meus dados": pede a ação de apagar e confirma, em qualquer estad
     assert.equal(p.r.acao, 'apagar');
     assert.match(p.texto, /apaguei os dados desta conversa/);
   }
+});
+
+// ---- Regressão: conversa real do celular (números soltos viravam produtividade e preço) ----
+test('REGRESSÃO celular: "2" solto não vira produtividade; "60 cerca de 100" pede a interpretação', async () => {
+  // LLM falso se comporta mal de propósito: pega só o primeiro número ("60" → preço), como no bug
+  const extrair = llm(
+    { cultura: 'soja', area_valor: 10, area_unidade: null },   // "10 de soja"
+    { preco: 60 },                                             // "60 cerca de 100"
+  );
+  let p = await passo({ estado: 'menu', dados: {} }, '1', extrair);
+  assert.match(p.texto, /Vamos fazer a conta/);
+
+  p = await passo(p.conv, '2', extrair); // logo depois do PEDE_SAFRA: nenhum campo foi perguntado
+  assert.match(p.texto, /Esse número é o quê\?/);
+  assert.equal(p.conv.dados.safra.produtividade, undefined);
+  assert.equal(p.r.estado, 'coletando_safra');
+
+  p = await passo(p.conv, '10 de soja', extrair);
+  assert.match(p.texto, /Esses 10 são hectares ou alqueires\?/);
+  p = await passo(p.conv, 'hectares', extrair);
+  assert.match(p.texto, /Quanto vai gastar no total/);
+  p = await passo(p.conv, '40 mil', extrair);
+  assert.equal(p.conv.dados.safra.custo_total, 40000);
+  assert.match(p.texto, /Quantas sacas por hectare/); // não pula a produtividade
+
+  p = await passo(p.conv, '60 cerca de 100', extrair);
+  assert.match(p.texto, /^60 são as sacas por hectare e 100 o preço da saca\?/);
+  assert.equal(p.conv.dados.safra.preco, undefined); // não foi guardado como preço R$ 60
+  assert.equal(p.conv.dados.safra.produtividade, undefined);
+
+  p = await passo(p.conv, 'sim', extrair);
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Entendi: 10 ha de soja, custo de R\$ 40\.000, 60 sacas\/ha e saca a R\$ 100\./);
+  assert.doesNotMatch(p.texto, /Atenção/);
+
+  p = await passo(p.conv, 'sim', extrair);
+  assert.match(p.texto, /custo por saca é R\$ 66,67/);
+  assert.doesNotMatch(p.texto, /fora do comum/);
+});
+
+test('REGRESSÃO celular: 2 sc/ha para soja destaca o aviso e exige "sim, está certo"; resultado extremo ganha alerta', async () => {
+  const base = { estado: 'coletando_safra', dados: { safra: { cultura: 'soja', area_ha: 10, custo_total: 40000 }, coleta: { campo_pedido: 'produtividade' } } };
+  const extrair = llm();
+  let p = await passo(base, '2', extrair); // número solto + pergunta de produtividade → vai para a produtividade
+  assert.equal(p.conv.dados.safra.produtividade, 2);
+  assert.match(p.texto, /Qual preço da saca/);
+  p = await passo(p.conv, '60', extrair);
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Está certo\?/);
+  p = await passo(p.conv, 'sim', extrair); // "sim" simples não basta
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.match(p.texto, /Atenção: 2 sacas por hectare/);
+  p = await passo(p.conv, 'sim, está certo', extrair);
+  assert.equal(p.r.estado, 'resultado_safra');
+  assert.match(p.texto, /custo por saca é R\$ 2\.000/);
+  assert.match(p.texto, /Esse resultado ficou bem fora do comum\. Vale conferir os números\./);
+});
+
+test('aviso de faixa: corrigir o número em vez de confirmar', async () => {
+  const base = { estado: 'confirmando_safra', dados: { safra: { cultura: 'soja', area_ha: 10, custo_total: 40000, produtividade: 2, preco: 60 }, coleta: { alerta_faixa: 'Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo?' } } };
+  const p = await passo(base, 'são 60 sacas por hectare', llm({ produtividade_valor: 60, produtividade_unidade: 'sc/ha' }));
+  assert.equal(p.r.estado, 'confirmando_safra');
+  assert.doesNotMatch(p.texto, /Atenção/);
+  assert.match(p.texto, /60 sacas\/ha/);
+});
+
+test('"1" seguido de "2" na mesma janela (debounce): pede a conta e o "2" cai na regra do número solto', async () => {
+  const extrair = llm();
+  const p = await passo({ estado: 'menu', dados: {} }, '1\n2', extrair);
+  assert.match(p.texto, /Vamos fazer a conta/);
+  assert.match(p.texto, /Esse número é o quê\?/);
+  assert.equal(p.r.estado, 'coletando_safra');
+  assert.equal(p.conv.dados.safra.produtividade, undefined);
+  assert.equal(extrair.chamadas.length, 0);
+});
+
+test('vários números com rótulo claro são todos aceitos; sem campo pendente e ambíguo pede para reformular', async () => {
+  const base = { estado: 'coletando_safra', dados: { safra: { cultura: 'soja', area_ha: 10, custo_total: 40000 }, coleta: { campo_pedido: 'produtividade' } } };
+  let p = await passo(base, '60 sacas por hectare e saca a 100', llm({ produtividade_valor: 60, produtividade_unidade: 'sc/ha', preco: 100 }));
+  assert.equal(p.r.estado, 'confirmando_safra');
+  p = await passo({ estado: 'coletando_safra', dados: { safra: {}, coleta: {} } }, '10 40 60 100', llm({ area_valor: 10, area_unidade: 'ha', numeros_ambiguos: true }));
+  assert.match(p.texto, /Vi vários números e não sei a que cada um se refere/);
+  assert.equal(p.conv.dados.safra.area_ha, undefined);
+});
+
+test('número solto: parser', () => {
+  const { numeroSolto, contarNumeros } = require('./roteador');
+  assert.equal(numeroSolto('2'), 2);
+  assert.equal(numeroSolto('40 mil'), 40000);
+  assert.equal(numeroSolto('uns 90 mil'), 90000);
+  assert.equal(numeroSolto('R$ 100'), 100);
+  assert.equal(numeroSolto('45.000'), 45000);
+  assert.equal(numeroSolto('1,2 milhão'), 1200000);
+  assert.equal(numeroSolto('60 sacas'), null);
+  assert.equal(numeroSolto('10 hectares'), null);
+  assert.equal(numeroSolto('60 cerca de 100'), null);
+  assert.deepEqual(contarNumeros('60 cerca de 100'), [60, 100]);
+  assert.deepEqual(contarNumeros('saca de 60 kg a 100 reais, gastei 45 mil'), [100, 45000]);
 });

@@ -83,7 +83,8 @@ async function processar(evento) {
       await responder(T.MENU);
       await db.salvarEstado(m.numero, 'menu');
     } else {
-      const r = await tratar(conversa, m.texto, { extrair });
+      const faixasCultura = await db.config('faixas_cultura', undefined);
+      const r = await tratar(conversa, m.texto, { extrair, faixasCultura });
       if (r.acao === 'apagar') {
         // Confirma por mensagem e apaga tudo do número (a própria confirmação não fica registrada)
         intencao = 'apagar';

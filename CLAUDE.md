@@ -57,6 +57,7 @@ Na apresentação, o público escaneia um **QR code** e conversa com a IAra ao v
 ```bash
 npm test                              # 14 testes: cálculo, perfil, alerta, resumo falado
 npm run bot                           # sobe o bot (porta BOT_PORT, padrão 3000)
+npm run regressao                     # cenários de conversa contra o bot no ar (LLM real)
 node scripts/simular-mensagem.mjs <numero> "<texto>"   # testa roteiros sem celular
 node scripts/disparar-alerta.mjs <cultura> <preço>      # alerta simulado da demo
 npm run build:n8n                     # só Plus 8: código do Code node do n8n

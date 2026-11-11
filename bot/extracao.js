@@ -49,6 +49,7 @@ function sanitizarExtracao(bruto) {
     gatilho_preco: num(e.gatilho_preco),
     confirmacao: e.confirmacao === true,
     fora_do_tema: e.fora_do_tema === true,
+    numeros_ambiguos: e.numeros_ambiguos === true,
     alteracao: alt,
   };
 }

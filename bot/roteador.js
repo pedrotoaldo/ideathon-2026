@@ -42,6 +42,49 @@ function ehNegacao(texto) {
   return NEGA.includes(normalizarTexto(texto));
 }
 
+// "sim, está certo": confirmação explícita (usada quando a IAra avisou que um valor está fora do comum)
+function ehConfirmacaoExplicita(texto) {
+  if (!ehConfirmacao(texto)) return false;
+  return normalizarTexto(texto).split(/[^\p{L}\p{N}]+/u).some((p) => ['certo', 'correto', 'confirmo', 'exato', 'mesmo'].includes(p));
+}
+
+const MULTIPLICADORES = { mil: 1e3, k: 1e3, milhao: 1e6, milhoes: 1e6 };
+
+function valorDoToken(numero, multiplicador) {
+  let n;
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(numero)) n = Number(numero.replace(/\./g, '').replace(',', '.')); // 45.000 ou 45.000,50
+  else n = Number(numero.replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  return multiplicador ? n * MULTIPLICADORES[multiplicador] : n;
+}
+
+// Todos os números em dígitos do texto ("45 mil" = 45000; ignora "60 kg"), na ordem em que aparecem
+function contarNumeros(texto) {
+  const t = normalizarTexto(texto);
+  const achados = [];
+  const re = /(\d+(?:[.,]\d+)*)(?: ?(mil|milhao|milhoes|k)(?= |$))?( ?kg)?/g;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    if (m[3]) continue;
+    const v = valorDoToken(m[1], m[2]);
+    if (v != null) achados.push(v);
+  }
+  return achados;
+}
+
+// Se a mensagem inteira é só um número ("2", "45 mil", "uns 90 mil", "R$ 100"), devolve o valor; senão null.
+// Número solto não diz a que campo pertence: quem decide é a pergunta que a IAra acabou de fazer.
+function numeroSolto(texto) {
+  const t = normalizarTexto(texto)
+    .replace(/r\$/g, ' ')
+    .replace(/(^| )(uns|umas|cerca|de|mais|ou|menos|aproximadamente|reais|real)(?= |$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const m = t.match(/^(\d{1,3}(?:\.\d{3})+|\d+)(,\d+)?(?: (mil|milhao|milhoes|k))?$/);
+  if (!m) return null;
+  return valorDoToken((m[1] || '') + (m[2] || ''), m[3]);
+}
+
 // Retorna { intencao, eSe }
 // intencao: menu | apagar | humano | tributario | gatilho | clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
@@ -51,6 +94,9 @@ function rotear(texto, estado) {
   if (t === '3' || tem(t, HUMANO)) return { intencao: 'humano' };
   // Dentro de um fluxo ativo, tudo é resposta do fluxo (exceto menu, 3 e apagar)
   if (ESTADOS_DE_FLUXO.includes(estado)) return { intencao: 'fluxo', eSe: tem(t, ['e se']) };
+  // "1" seguido de outras linhas (mensagens agrupadas pelo debounce): escolhe a safra e o resto segue como resposta a ela
+  const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (linhas.length > 1 && normalizarTexto(linhas[0]) === '1') return { intencao: 'safra', eSe: false, soPedido: false, resto: linhas.slice(1).join('\n') };
   if (t === '4' || tem(t, GATILHO)) return { intencao: 'gatilho' };
   if (t === '2' || tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
   if (tem(t, CLIMA)) return { intencao: 'clima' };
@@ -62,4 +108,4 @@ function rotear(texto, estado) {
   return { intencao: 'ambiguo' };
 }
 
-module.exports = { rotear, normalizarTexto, ehConfirmacao, ehNegacao };
+module.exports = { rotear, normalizarTexto, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, numeroSolto, contarNumeros };

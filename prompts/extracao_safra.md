@@ -1,4 +1,4 @@
-# Prompt — extração de dados da safra e do alerta de preço (v1.3)
+# Prompt — extração de dados da safra e do alerta de preço (v1.4)
 
 Uso: nó HTTP "Extração" em `POST {LLM_BASE_URL}/chat/completions`, temperatura 0, com `response_format: {"type": "json_object"}`.
 
@@ -25,6 +25,9 @@ Regras:
 - Se a mensagem só confirma ("sim", "isso", "certo", "ok"), `confirmacao` = true.
 - Se a mensagem pede alerta de preço ("me avisa quando a soja passar de 110"), preencha `gatilho_preco` com o preço e `cultura` com a cultura citada.
 - Se a mensagem não tem nada a ver com safra, `fora_do_tema` = true.
+- Um número seguido de "de" e uma cultura ("10 de soja", "20 de milho") é a área: preencha `area_valor` e deixe `area_unidade` = null (o bot pergunta se são hectares ou alqueires). Isso NÃO é ambíguo.
+- `numeros_ambiguos` só pode ser true quando a mensagem tem dois ou mais números. Com um número só, é sempre false.
+- Vários números sem unidade nem palavra que diga a que cada um se refere (ex.: "60 cerca de 100", "10 40 60 100"): preencha só o que estiver claro, deixe o resto null e marque `numeros_ambiguos` = true. Nunca adivinhe o campo de um número solto. Se cada número tem unidade ou palavra ("60 sacas por hectare, saca a 100"), extraia todos e `numeros_ambiguos` = false.
 
 ## JSON Schema (referência: vai no texto do prompt e valida no bot)
 
@@ -46,6 +49,7 @@ Regras:
       "gatilho_preco": { "type": ["number", "null"] },
       "confirmacao": { "type": "boolean" },
       "fora_do_tema": { "type": "boolean" },
+      "numeros_ambiguos": { "type": "boolean" },
       "alteracao": {
         "type": ["object", "null"],
         "additionalProperties": false,
@@ -58,7 +62,7 @@ Regras:
         "required": ["produtividade_pct", "preco", "custo_total", "produtividade_valor"]
       }
     },
-    "required": ["cultura", "area_valor", "area_unidade", "custo_total", "produtividade_valor", "produtividade_unidade", "preco", "gatilho_preco", "confirmacao", "fora_do_tema", "alteracao"]
+    "required": ["cultura", "area_valor", "area_unidade", "custo_total", "produtividade_valor", "produtividade_unidade", "preco", "gatilho_preco", "confirmacao", "fora_do_tema", "numeros_ambiguos", "alteracao"]
   }
 }
 ```
@@ -74,6 +78,9 @@ Regras:
 | "sim, isso mesmo" | confirmacao true |
 | "me avisa quando a soja passar de 110" | cultura "soja", gatilho_preco 110 |
 | "quem ganhou o jogo ontem?" | fora_do_tema true |
+| "10 de soja" | cultura "soja", area_valor 10, area_unidade null, numeros_ambiguos false |
+| "60 cerca de 100" (pergunta pendente: produtividade) | numeros_ambiguos true, demais null |
+| "60 sacas por hectare e saca a 100" | produtividade 60 "sc/ha", preco 100, numeros_ambiguos false |
 
 ## Validação no bot (depois do LLM)
 - Faixas plausíveis (fora delas, perguntar de novo em vez de calcular): área 0,1 a 100.000 ha; custo 100 a 500.000.000; produtividade 1 a 200 sc/ha; preço 10 a 1.000 R$/sc.

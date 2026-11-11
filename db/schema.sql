@@ -13,6 +13,8 @@ INSERT INTO config (chave, valor) VALUES
   ('limite_receita_nao_contribuinte', '3600000'),
   ('rate_limit', '{"mensagens": 20, "janela_min": 10}'),
   ('cenarios', '{"desfavoravel_pct": -20, "favoravel_pct": 10}'),
+  -- Faixa plausível de produtividade (sc/ha) por cultura: valores iniciais, validar com um técnico. Outras culturas usam só a faixa geral.
+  ('faixas_cultura', '{"soja": {"produtividade": [20, 90]}, "milho": {"produtividade": [40, 200]}, "cafe": {"produtividade": [10, 80]}}'),
   ('versao_prompt', '"v1"'),
   ('versao_base_tributaria', '"v1-pendente-revisao"'),
   ('audio_resposta', '{"ativo": true, "max_caracteres": 400}'),

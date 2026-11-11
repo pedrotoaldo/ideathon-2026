@@ -132,7 +132,7 @@ function textoResultado(resultado) {
 
 function montarRespostaSafra(calc) {
   const { cenarios: c, entrada } = calc;
-  return [
+  const linhas = [
     'Pela sua conta:',
     '• Para empatar, você precisa colher pelo menos ' + formatarDecimal(calc.produtividade_minima) + ' sacas/ha.',
     '• Seu custo por saca é ' + formatarReais(calc.preco_equilibrio) + '. Vendendo abaixo disso, dá prejuízo.',
@@ -143,7 +143,10 @@ function montarRespostaSafra(calc) {
     '• Colhendo ' + c.favoravel.pct + '% mais: ' + textoResultado(c.favoravel.resultado),
     '',
     'É uma simulação com os números que você passou, não uma previsão.',
-  ].join('\n');
+  ];
+  // Custo por saca acima do dobro do preço: provável erro de digitação
+  if (calc.preco_equilibrio > 2 * entrada.preco) linhas.push('', 'Esse resultado ficou bem fora do comum. Vale conferir os números.');
+  return linhas.join('\n');
 }
 
 function montarRespostaESe(r) {
@@ -156,15 +159,41 @@ function montarRespostaESe(r) {
   );
 }
 
+// Faixa plausível de produtividade por cultura (valores iniciais, a validar com um técnico; ficam em config.faixas_cultura).
+const FAIXAS_CULTURA_PADRAO = {
+  soja: { produtividade: [20, 90] },
+  milho: { produtividade: [40, 200] },
+  cafe: { produtividade: [10, 80] },
+};
+
+function normalizarCultura(c) {
+  return String(c || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9 ]/g, '').trim();
+}
+
+// Aviso quando a produtividade está fora do comum para a cultura (ou null). Culturas sem faixa usam só a faixa geral.
+function avisoFaixaCultura(d, faixas = FAIXAS_CULTURA_PADRAO) {
+  const f = faixas && faixas[normalizarCultura(d && d.cultura)];
+  const faixa = f && f.produtividade;
+  if (!faixa || d.produtividade == null) return null;
+  const quanto = formatarDecimal(d.produtividade) + ' sacas por hectare';
+  if (d.produtividade < faixa[0]) return 'Atenção: ' + quanto + ' é bem abaixo do comum para ' + d.cultura + '. Está certo?';
+  if (d.produtividade > faixa[1]) return 'Atenção: ' + quanto + ' é bem acima do comum para ' + d.cultura + '. Está certo?';
+  return null;
+}
+
 // Confirmação dos dados coletados (CONFIRMA_DADOS): só repete o que o produtor disse, com área em ha e alqueire original.
-function montarConfirmacao(d) {
+// Com aviso de faixa, exige correção ou um "sim, está certo" explícito.
+function montarConfirmacao(d, aviso) {
   const origem = d.area_origem ? ' (' + formatarDecimal(d.area_origem.valor) + ' ' + (d.area_origem.valor === 1 ? 'alqueire' : 'alqueires') + ')' : '';
   const cultura = d.cultura ? ' de ' + d.cultura : '';
-  return (
+  const ultima = aviso
+    ? aviso + ' Se estiver, responda "sim, está certo". Ou me corrija.'
+    : 'Está certo? Responda "sim" ou me corrija.';
+  return [
     'Entendi: ' + formatarDecimal(d.area_ha) + ' ha' + origem + cultura + ', custo de ' + formatarReais(d.custo_total) +
-    ', ' + formatarDecimal(d.produtividade) + ' sacas/ha e saca a ' + formatarReais(d.preco) + '.\n' +
-    'Está certo? Responda "sim" ou me corrija.'
-  );
+      ', ' + formatarDecimal(d.produtividade) + ' sacas/ha e saca a ' + formatarReais(d.preco) + '.',
+    ultima,
+  ].join('\n');
 }
 
 // ---------- Perfil tributário provável (regra fixa, não é LLM) ----------
@@ -244,7 +273,7 @@ const API = {
   HA_POR_ALQUEIRE_PAULISTA, CENARIOS_PADRAO, FAIXAS,
   round2, converterAreaParaHa, converterProdutividadeParaScHa, mesclarExtracao,
   camposFaltantes, camposForaDaFaixa, calcularSafra, calcularESe,
-  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao,
+  formatarReais, formatarDecimal, textoResultado, montarRespostaSafra, montarRespostaESe, montarConfirmacao, avisoFaixaCultura, normalizarCultura, FAIXAS_CULTURA_PADRAO,
   perfilProvavel, montarResumoFalado, validarPrecoAlvo, avaliarGatilhos, montarAlertaPreco,
 };
 

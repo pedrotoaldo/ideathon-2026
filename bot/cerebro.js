@@ -1,27 +1,55 @@
 // Máquina de estados da conversa (docs/ARCHITECTURE.md seção 4). Sem I/O: recebe o LLM por injeção (deps.extrair),
-// devolve { estado, dados, respostas } e quem grava no banco e envia é o processar.js. Todo número sai de safra.cjs.
+// devolve { estado, dados, respostas, acao } e quem grava no banco e envia é o processar.js. Todo número sai de safra.cjs.
 
 const S = require('../src/calc/safra.cjs');
 const T = require('./textos');
-const { rotear, ehConfirmacao, ehNegacao, normalizarTexto } = require('./roteador');
+const { rotear, ehConfirmacao, ehConfirmacaoExplicita, ehNegacao, normalizarTexto, numeroSolto, contarNumeros } = require('./roteador');
 const { temDadosDeSafra } = require('./extracao');
 
 const ORDEM = ['area_ha', 'custo_total', 'produtividade', 'preco'];
 const FLUXO = ['coletando_safra', 'confirmando_safra'];
+const DESCRICAO = { area_ha: 'a área', custo_total: 'o custo total', produtividade: 'as sacas por hectare', preco: 'o preço da saca' };
 
 function clonar(o) {
   return JSON.parse(JSON.stringify(o || {}));
 }
 
+function semDados() {
+  return {
+    cultura: null, area_valor: null, area_unidade: null, custo_total: null, produtividade_valor: null,
+    produtividade_unidade: null, preco: null, gatilho_preco: null, confirmacao: false, fora_do_tema: false,
+    numeros_ambiguos: false, alteracao: null,
+  };
+}
+
+// Extração equivalente a "o produtor respondeu só este número à pergunta deste campo"
+function preencher(e, campo, valor) {
+  if (campo === 'area_ha') e.area_valor = valor; // sem unidade: a IAra pergunta hectare ou alqueire
+  else if (campo === 'custo_total') e.custo_total = valor;
+  else if (campo === 'produtividade') { e.produtividade_valor = valor; e.produtividade_unidade = 'sc/ha'; }
+  else if (campo === 'preco') e.preco = valor;
+  return e;
+}
+const extDoCampo = (campo, valor) => preencher(semDados(), campo, valor);
+
+const perto = (a, b) => Math.abs(a - b) < 1e-6;
+
+// Todo número digitado aparece na extração? (se sobra algum, o LLM não soube a que campo ele pertence)
+function todosExplicados(numeros, ext) {
+  const alvo = [ext.area_valor, ext.custo_total, ext.produtividade_valor, ext.preco, ext.gatilho_preco].filter((v) => v != null);
+  return numeros.every((n) => alvo.some((v) => perto(v, n)));
+}
+
 async function tratar(conversa, texto, deps) {
   const out = { estado: conversa.estado, dados: clonar(conversa.dados), respostas: [], versao_prompt: null };
   const dados = out.dados;
+  const faixasCultura = deps.faixasCultura || S.FAIXAS_CULTURA_PADRAO;
   const say = (t, intencao, usou_llm = false) => out.respostas.push({ texto: t, intencao, usou_llm });
 
   async function chamarLlm(t, campo_pedido) {
     const { ext, versao } = await deps.extrair(t, { dados_atuais: dados.safra || {}, campo_pedido });
     out.versao_prompt = versao;
-    return ext;
+    return { ...semDados(), ...ext };
   }
 
   function perguntar(campo, prefixo = '') {
@@ -31,7 +59,7 @@ async function tratar(conversa, texto, deps) {
 
   function iniciarSafra() {
     dados.safra = {};
-    dados.coleta = {};
+    dados.coleta = {}; // sem campo_pedido: número solto logo depois do PEDE_SAFRA não vai para campo nenhum
     out.estado = 'coletando_safra';
   }
 
@@ -50,7 +78,7 @@ async function tratar(conversa, texto, deps) {
       coleta.pendente_area = trabalho.area_valor;
       trabalho.area_valor = null;
     }
-    let novo = S.mesclarExtracao(dados.safra || {}, trabalho);
+    const novo = S.mesclarExtracao(dados.safra || {}, trabalho);
 
     const fora = S.camposForaDaFaixa(novo);
     for (const c of fora) {
@@ -73,8 +101,10 @@ async function tratar(conversa, texto, deps) {
         perguntar(faltam[0]);
         out.estado = 'coletando_safra';
       } else if (mudou || !jaConfirmando) {
-        delete dados.coleta;
-        say(S.montarConfirmacao(novo), 'safra');
+        // Produtividade fora do comum para a cultura: destaca e exige correção ou "sim, está certo"
+        const aviso = S.avisoFaixaCultura(novo, faixasCultura);
+        dados.coleta = aviso ? { alerta_faixa: aviso } : {};
+        say(S.montarConfirmacao(novo, aviso), 'safra');
         out.estado = 'confirmando_safra';
       }
     }
@@ -94,44 +124,89 @@ async function tratar(conversa, texto, deps) {
     aplicar({ ...semDados(), area_valor: valor, area_unidade: unidade });
   }
 
-  function semDados() {
-    return {
-      cultura: null, area_valor: null, area_unidade: null, custo_total: null, produtividade_valor: null,
-      produtividade_unidade: null, preco: null, gatilho_preco: null, confirmacao: false, fora_do_tema: false, alteracao: null,
-    };
+  // Vários números para um campo só e sem rótulo claro: mostra a interpretação e pede o "sim"
+  function perguntarHipotese(campo, numeros) {
+    const campos = [campo, ...ORDEM.slice(ORDEM.indexOf(campo) + 1).filter((c) => S.camposFaltantes(dados.safra || {}).includes(c))];
+    if (numeros.length > campos.length) {
+      perguntar(campo, T.NUMEROS_AMBIGUOS);
+      return;
+    }
+    const partes = numeros.map((n, i) => (i === 0 ? S.formatarDecimal(n) + ' são ' + DESCRICAO[campos[i]] : S.formatarDecimal(n) + ' ' + DESCRICAO[campos[i]]));
+    const frase = partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
+    dados.coleta = { ...(dados.coleta || {}), campo_pedido: campo, hipotese: { campos: campos.slice(0, numeros.length), valores: numeros } };
+    say(frase + '? ' + T.CONFIRMA_HIPOTESE, 'safra');
   }
 
   async function coletar(t) {
-    if (dados.coleta && dados.coleta.pendente_area != null) return resolverUnidadeArea(t);
-    const ext = await chamarLlm(t, dados.coleta && dados.coleta.campo_pedido);
+    const coleta = (dados.coleta = dados.coleta || {});
+    if (coleta.pendente_area != null) return resolverUnidadeArea(t);
+
+    // Hipótese pendente ("60 são as sacas por hectare e 100 o preço da saca?"): "sim" aplica todas
+    if (coleta.hipotese) {
+      const h = coleta.hipotese;
+      delete coleta.hipotese;
+      if (ehConfirmacao(t)) {
+        const ext = semDados();
+        h.campos.forEach((c, i) => preencher(ext, c, h.valores[i]));
+        aplicar(ext);
+        return;
+      }
+    }
+
+    const campo = coleta.campo_pedido || null;
+
+    // Número solto vai só para o campo que a IAra acabou de perguntar (sem LLM). Sem pergunta pendente, pergunta a que se refere.
+    const solto = numeroSolto(t);
+    if (solto != null) {
+      if (!campo) { say(T.NUMERO_SOLTO, 'safra'); return; }
+      aplicar(extDoCampo(campo, solto));
+      return;
+    }
+
+    const ext = await chamarLlm(t, campo);
+    const numeros = contarNumeros(t);
+    if (numeros.length >= 2 && (ext.numeros_ambiguos || (campo && !todosExplicados(numeros, ext)))) {
+      if (campo) perguntarHipotese(campo, numeros);
+      else say(T.NUMEROS_AMBIGUOS_LIVRE, 'safra', true);
+      return;
+    }
+
     const mudou = aplicar(ext);
     if (!mudou) {
       // Nada aproveitável: repete a pergunta pendente (ou diz que está fora do escopo)
       out.respostas = [];
-      const campo = S.camposFaltantes(dados.safra || {})[0] || ORDEM[0];
-      perguntar(campo, ext.fora_do_tema ? T.FORA_ESCOPO : '');
+      const falta = S.camposFaltantes(dados.safra || {})[0] || ORDEM[0];
+      perguntar(falta, ext.fora_do_tema ? T.FORA_ESCOPO : '');
     }
+  }
+
+  function calcular() {
+    const calc = S.calcularSafra(dados.safra, S.CENARIOS_PADRAO);
+    dados.ultimo_calculo = {
+      cultura: dados.safra.cultura || null,
+      entrada: calc.entrada,
+      custo_ha: calc.custo_ha,
+      produtividade_minima: calc.produtividade_minima,
+      preco_equilibrio: calc.preco_equilibrio,
+      calculado_em: new Date().toISOString(),
+    };
+    delete dados.coleta;
+    say(S.montarRespostaSafra(calc), 'safra');
+    say(T.OFERTA_PROXIMO, 'safra');
+    out.estado = 'resultado_safra';
   }
 
   async function confirmar(t, eSeNaConfirmacao) {
     if (eSeNaConfirmacao) { say(T.ESE_ANTES_CONFIRMAR, 'safra'); return; } // continua em confirmando_safra
+    const alerta = dados.coleta && dados.coleta.alerta_faixa;
     if (ehConfirmacao(t)) {
-      const calc = S.calcularSafra(dados.safra, S.CENARIOS_PADRAO);
-      dados.ultimo_calculo = {
-        cultura: dados.safra.cultura || null,
-        entrada: calc.entrada,
-        custo_ha: calc.custo_ha,
-        produtividade_minima: calc.produtividade_minima,
-        preco_equilibrio: calc.preco_equilibrio,
-        calculado_em: new Date().toISOString(),
-      };
-      say(S.montarRespostaSafra(calc), 'safra');
-      say(T.OFERTA_PROXIMO, 'safra');
-      out.estado = 'resultado_safra';
+      if (alerta && !ehConfirmacaoExplicita(t)) { say(S.montarConfirmacao(dados.safra, alerta), 'safra'); return; }
+      calcular();
       return;
     }
     if (ehNegacao(t)) { say(T.PERGUNTA_CORRECAO, 'safra'); return; }
     if (dados.coleta && dados.coleta.pendente_area != null) return resolverUnidadeArea(t);
+    if (numeroSolto(t) != null) { say(T.NUMERO_SOLTO, 'safra'); return; } // correção sem dizer qual campo
     const ext = await chamarLlm(t, null);
     const mudou = aplicar(ext, { jaConfirmando: true });
     if (!mudou) { out.respostas = []; say(T.PERGUNTA_CORRECAO, 'safra'); }
@@ -157,6 +232,7 @@ async function tratar(conversa, texto, deps) {
     const ext = await chamarLlm(t, null);
     if (temDadosDeSafra(ext) && !ext.fora_do_tema) {
       iniciarSafra();
+      if (ext.numeros_ambiguos && contarNumeros(t).length >= 2) { say(T.NUMEROS_AMBIGUOS_LIVRE, 'safra', true); return; }
       aplicar(ext);
       return;
     }
@@ -185,6 +261,11 @@ async function tratar(conversa, texto, deps) {
     } else if (r.soPedido) {
       iniciarSafra();
       say(T.PEDE_SAFRA, 'safra');
+    } else if (r.resto) {
+      // "1" e mais linhas na mesma janela do debounce: pede a conta e trata o resto como resposta a ela
+      iniciarSafra();
+      say(T.PEDE_SAFRA, 'safra');
+      await coletar(r.resto);
     } else {
       iniciarSafra();
       await coletar(texto); // a mensagem já traz dados: extrai na hora

@@ -48,6 +48,13 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Resposta com `RESULTADO_SAFRA`; "e se..." com `calcularESe`
 - [x] Roteiro A de `docs/CONVERSA.md` e a parte em alqueire do Roteiro B (por texto, sem áudio), no simulador com o Gemini real e em `bot/cerebro.test.cjs`
 
+- [x] "Apagar meus dados" apaga as linhas do número em `resposta`, `mensagem`, `encaminhamento` e `conversa` e confirma
+- [x] "E se" durante a confirmação responde `ESE_ANTES_CONFIRMAR` e continua em `confirmando_safra`
+- [x] Número solto só vai para o campo que a IAra acabou de perguntar (sem pergunta pendente, `NUMERO_SOLTO`); vários números para um campo: aceita se o texto deixa claro, senão mostra a interpretação e pede "sim"
+- [x] Faixa de produtividade por cultura em `config.faixas_cultura` (soja 20 a 90, milho 40 a 200, café 10 a 80; valores iniciais a validar com um técnico): fora dela, a confirmação destaca o aviso e exige "sim, está certo"
+- [x] Custo por saca acima de 2 vezes o preço: o resultado ganha "Esse resultado ficou bem fora do comum. Vale conferir os números." (`safra.cjs`)
+- [x] Regressão da conversa do celular: `bot/cerebro.test.cjs` (offline) e `npm run regressao` (bot no ar, LLM real)
+
 ## Etapa 3 — Reforma tributária e proteção
 - [ ] Perguntas do perfil (tipo de pessoa, receita, integrado, outra empresa) → `perfilProvavel` → `PERFIL_RESULTADO` + `CHECKLIST`
 - [ ] Dúvida livre → redator tributário (`prompts/agente_sistema.md` + `content/reforma_tributaria_base.md`); tokens `NAO_SEI` e `FORA_ESCOPO` viram textos fixos

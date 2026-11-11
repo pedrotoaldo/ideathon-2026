@@ -114,6 +114,14 @@ Etapa 5: áudio de entrada liga `responde_audio` automaticamente (a IAra respond
 
 Campos obrigatórios da safra: `area`, `custo_total`, `produtividade_esperada`, `preco`. Cultura é opcional (padrão "safra").
 
+### Regras da coleta da safra (`bot/cerebro.js`)
+- **Número solto** ("2", "40 mil", "uns 90 mil", "R$ 100": sem unidade nem contexto) nunca vai para um campo por palpite. Vai só para o campo que a IAra acabou de perguntar (`dados.coleta.campo_pedido`), sem chamar o LLM. Sem pergunta pendente (logo depois do `PEDE_SAFRA`), a IAra responde `NUMERO_SOLTO` e não guarda nada.
+- **Área sem unidade:** pergunta "hectares ou alqueires?" antes de converter.
+- **Vários números para um campo só:** se cada um tem unidade ou palavra ("60 sacas por hectare e saca a 100"), aceita todos; senão (`numeros_ambiguos` do LLM, ou número sem correspondência na extração) mostra a interpretação ("60 são as sacas por hectare e 100 o preço da saca?") e só aplica com "sim".
+- **Faixa por cultura:** `config.faixas_cultura` (produtividade em sc/ha; valores iniciais a validar com um técnico). Fora da faixa, o `CONFIRMA_DADOS` traz o aviso no lugar do "Está certo?" e exige correção ou "sim, está certo"; um "sim" simples repete o aviso.
+- **Resultado fora do comum:** custo por saca acima de 2 vezes o preço informado → `safra.cjs` acrescenta o aviso ao `RESULTADO_SAFRA`.
+- **Regressão:** `bot/cerebro.test.cjs` (LLM falso, offline) e `npm run regressao` (bot no ar, LLM real, números fictícios).
+
 ## 5. Regra de perfil provável (determinística, não é LLM)
 
 ```

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test \"src/**/*.test.cjs\" \"bot/**/*.test.cjs\"",
     "bot": "node --env-file=.env bot/server.js",
+    "regressao": "node --env-file=.env scripts/regressao.mjs",
     "build:n8n": "node scripts/build-n8n.mjs"
   },
   "engines": {

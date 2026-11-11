@@ -137,3 +137,31 @@ test('confirmação dos dados repete a entrada, com alqueire convertido', () => 
   assert.match(alq, /48,4 ha \(20 alqueires\) de soja/);
 });
 
+
+test('resultado fora do comum: custo por saca acima do dobro do preço ganha o aviso (caso 2 sc/ha do celular)', () => {
+  const ruim = s.calcularSafra({ area_ha: 10, custo_total: 40000, produtividade: 2, preco: 60 });
+  assert.equal(ruim.preco_equilibrio, 2000);
+  assert.match(s.montarRespostaSafra(ruim), /Esse resultado ficou bem fora do comum\. Vale conferir os números\.$/);
+  // exatamente o dobro não dispara; o exemplo de referência também não
+  assert.doesNotMatch(s.montarRespostaSafra(s.calcularSafra({ area_ha: 10, custo_total: 12000, produtividade: 10, preco: 60 })), /fora do comum/);
+  assert.doesNotMatch(s.montarRespostaSafra(s.calcularSafra(REF)), /fora do comum/);
+});
+
+test('faixa de produtividade por cultura: soja 20 a 90, milho 40 a 200, café 10 a 80; outras sem aviso', () => {
+  const d = (cultura, produtividade) => ({ cultura, produtividade });
+  assert.equal(s.avisoFaixaCultura(d('soja', 2)), 'Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo?');
+  assert.match(s.avisoFaixaCultura(d('soja', 95)), /bem acima do comum para soja/);
+  assert.equal(s.avisoFaixaCultura(d('soja', 60)), null);
+  assert.match(s.avisoFaixaCultura(d('Milho', 30)), /abaixo do comum para Milho/);
+  assert.equal(s.avisoFaixaCultura(d('Milho', 150)), null);
+  assert.match(s.avisoFaixaCultura(d('café', 5)), /abaixo do comum/);
+  assert.equal(s.avisoFaixaCultura(d('feijão', 1)), null);
+  assert.equal(s.avisoFaixaCultura(d(null, 1)), null);
+  // faixas vindas da config têm prioridade
+  assert.equal(s.avisoFaixaCultura(d('soja', 2), { soja: { produtividade: [1, 90] } }), null);
+});
+
+test('confirmação com aviso exige "sim, está certo"', () => {
+  const t = s.montarConfirmacao({ cultura: 'soja', area_ha: 10, custo_total: 40000, produtividade: 2, preco: 60 }, 'Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo?');
+  assert.match(t, /Atenção: 2 sacas por hectare é bem abaixo do comum para soja\. Está certo\? Se estiver, responda "sim, está certo"/);
+});

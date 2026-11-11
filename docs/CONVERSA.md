@@ -45,6 +45,16 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **APAGADO** (resposta a "apagar meus dados"; apaga as linhas do número em resposta, mensagem, encaminhamento e conversa)
 > Pronto, apaguei os dados desta conversa. Se quiser recomeçar, é só escrever "oi".
 
+**NUMERO_SOLTO** (número sem unidade nem contexto, sem pergunta de campo pendente; nunca é guardado)
+> Esse número é o quê? Pode dizer, por exemplo: "10 hectares", "custo de 45 mil", "60 sacas por hectare" ou "saca a 100".
+
+**Hipótese de números** (vários números para uma pergunta de um campo só, sem rótulo claro; mostra a interpretação)
+> 60 são as sacas por hectare e 100 o preço da saca? Responda "sim" ou me diga os números certos.
+> (se não der para mapear: NUMEROS_AMBIGUOS + a pergunta do campo; sem campo pendente: "Vi vários números e não sei a que cada um se refere. Me diga assim: "10 hectares, custo de 45 mil, 60 sacas por hectare e saca a 100".")
+
+**Aviso de faixa por cultura** (dentro do CONFIRMA_DADOS, no lugar de "Está certo?"; exige correção ou "sim, está certo")
+> Atenção: 2 sacas por hectare é bem abaixo do comum para soja. Está certo? Se estiver, responda "sim, está certo". Ou me corrija.
+
 **ESE_NAO_ENTENDI**
 > Não entendi o cenário. Tente assim: "e se a saca for 90?" ou "e se eu colher 20% menos?".
 
