@@ -72,10 +72,10 @@ O bot do Núcleo é um serviço Node (http nativo + `pg`; Node 21 tem `fetch` e 
 - [x] Plus 9, 10 e 11 descritas em `docs/FASES_PLUS.md`; Plus 7 ganhou a integração com app e CRM
 
 ## Etapa 4 — Alerta simulado
-- [ ] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`
-- [ ] `node scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`): busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → marca `ativo: false` antes de enviar (aviso único) → envia pela Evolution e põe a conversa em `aguardando_resposta_alerta`
-- [ ] Resposta "sim"/"não" ao alerta → `ALERTA_RESPOSTA_SIM` (cria `encaminhamento`) ou `ALERTA_RESPOSTA_NAO`
-- [ ] Roteiro E-simulado
+- [x] "me avisa quando a soja passar de 95" → extrair `cultura` e `gatilho_preco`, validar com `validarPrecoAlvo`, salvar em `conversa.dados.alerta` = `{ cultura, preco_alvo, ativo: true }` → `GATILHO_CRIADO`
+- [x] `node scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`): busca conversas com alerta ativo daquela cultura e preço-alvo atingido → texto com `montarAlertaPreco` → marca `ativo: false` antes de enviar (aviso único) → envia pela Evolution e põe a conversa em `aguardando_resposta_alerta`
+- [x] Resposta "sim"/"não" ao alerta → `ALERTA_RESPOSTA_SIM` (cria `encaminhamento`) ou `ALERTA_RESPOSTA_NAO`
+- [x] Roteiro E-simulado (no `npm run regressao`, com `--so <prefixo>` para nunca acionar alertas reais; falta só o teste pelo celular)
 
 ## Etapa 5 — Áudio (OpenAI), só depois de a conversa por texto estar estável
 Usa `AUDIO_BASE_URL`, `AUDIO_API_KEY`, `AUDIO_MODEL_TRANSCRICAO` e `AUDIO_MODEL_TTS`, separados do `LLM_*`.

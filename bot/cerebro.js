@@ -74,6 +74,14 @@ function lerReceita(t) {
   return { valor: nums[0] };
 }
 
+// ---------- Alerta de preço (Etapa 4) ----------
+const CULTURAS = ['soja', 'milho', 'trigo', 'cafe', 'feijao', 'sorgo', 'arroz', 'algodao', 'cana', 'mandioca', 'aveia', 'cevada', 'girassol', 'amendoim'];
+const NOME_CULTURA = { cafe: 'café', feijao: 'feijão', algodao: 'algodão' };
+function lerCultura(t) {
+  const n = normalizarTexto(t);
+  return CULTURAS.find((c) => new RegExp('(^| )' + c + '( |$)').test(n)) || null;
+}
+
 const pareceDuvida = (t) => /[?]/.test(t) || normalizarTexto(t).split(' ').length >= 6;
 
 async function tratar(conversa, texto, deps) {
@@ -268,13 +276,13 @@ async function tratar(conversa, texto, deps) {
   async function ambiguo(t) {
     if (conversa.estado === 'tributario') { await duvida(t); return; } // conversa sobre a reforma: segue com o redator
     const ext = await chamarLlm(t, null);
+    if (ext.gatilho_preco != null && !ext.fora_do_tema) { await criarAlerta(t, ext); return; }
     if (temDadosDeSafra(ext) && !ext.fora_do_tema) {
       iniciarSafra();
       if (ext.numeros_ambiguos && contarNumeros(t).length >= 2) { say(T.NUMEROS_AMBIGUOS_LIVRE, 'safra', true); return; }
       aplicar(ext);
       return;
     }
-    if (ext.gatilho_preco != null) { say(T.EM_BREVE, 'gatilho'); return; }
     if (ext.alteracao) { say(T.SEM_CONTA, 'safra', true); return; }
     say(T.FORA_ESCOPO, 'fora_escopo', true);
   }
@@ -355,6 +363,60 @@ async function tratar(conversa, texto, deps) {
     say(T.ENCAMINHAMENTO, 'humano');
   }
 
+  // Pedido de alerta: cultura e preço-alvo por regra; o LLM só entra se há um preço e a cultura não aparece
+  async function criarAlerta(t, ext = null) {
+    const nums = contarNumeros(t);
+    let preco = nums.length === 1 ? nums[0] : null;
+    let cultura = lerCultura(t);
+    let nome = cultura ? (NOME_CULTURA[cultura] || cultura) : null;
+    const daSafra = dados.safra && dados.safra.cultura ? S.normalizarCultura(dados.safra.cultura) : null;
+    if (!cultura && daSafra && preco != null) { cultura = daSafra; nome = String(dados.safra.cultura).toLowerCase(); }
+    if (!cultura && preco != null) {
+      const e = ext || await chamarLlm(t, null);
+      if (e.cultura) { cultura = S.normalizarCultura(e.cultura); nome = String(e.cultura).toLowerCase(); }
+    }
+    if (preco == null && ext && ext.gatilho_preco != null) preco = ext.gatilho_preco;
+    if (!cultura || preco == null) {
+      out.estado = 'criando_alerta';
+      say(T.PEDE_GATILHO, 'gatilho');
+      return;
+    }
+    if (!S.validarPrecoAlvo(preco)) {
+      out.estado = 'criando_alerta';
+      say(T.FORA_DA_FAIXA, 'gatilho');
+      return;
+    }
+    dados.alerta = { cultura, cultura_nome: nome, preco_alvo: preco, ativo: true, criado_em: new Date().toISOString() };
+    let msg = T.GATILHO_CRIADO.replace('{cultura}', nome).replace('{preco_alvo}', S.formatarReais(preco));
+    const calc = dados.ultimo_calculo;
+    if (calc && calc.preco_equilibrio != null && calc.cultura && S.normalizarCultura(calc.cultura) === cultura) {
+      msg += ' ' + T.GATILHO_REFERENCIA_CUSTO.replace('{custo_saca}', S.formatarReais(calc.preco_equilibrio));
+    }
+    out.estado = 'menu';
+    say(msg, 'gatilho');
+  }
+
+  // Resposta ao ALERTA_PRECO enviado por scripts/disparar-alerta.mjs
+  function respostaAlerta(sim) {
+    const a = dados.alerta || {};
+    if (sim) {
+      out.acao = 'encaminhar';
+      out.motivo = 'pedido_usuario';
+      out.contexto = { origem: 'alerta', cultura: a.cultura || null, preco_alvo: a.preco_alvo || null, preco_cotacao: a.disparado ? a.disparado.preco : null };
+      say(T.ALERTA_RESPOSTA_SIM, 'alerta_resposta');
+    } else {
+      say(T.ALERTA_RESPOSTA_NAO, 'alerta_resposta');
+    }
+    out.estado = 'menu';
+  }
+
+  // Depois do alerta: só "sim" ou "não" respondem a ele; qualquer outra coisa sai do estado e segue como no menu
+  if (conversa.estado === 'aguardando_resposta_alerta') {
+    if (ehConfirmacao(texto) || ehNegacao(texto)) { respostaAlerta(ehConfirmacao(texto)); return out; }
+    conversa = { ...conversa, estado: 'menu' };
+    out.estado = 'menu';
+  }
+
   const r = rotear(texto, conversa.estado);
 
   if (r.intencao === 'menu') {
@@ -390,10 +452,13 @@ async function tratar(conversa, texto, deps) {
     } else {
       say(T.AUDIO_AINDA_NAO, 'audio');
     }
-  } else if (['gatilho', 'clima', 'painel'].includes(r.intencao)) {
-    say(T.EM_BREVE, r.intencao); // entram na Etapa 4, na Etapa 5 e nas Fases Plus
+  } else if (r.intencao === 'gatilho') {
+    await criarAlerta(normalizarTexto(texto) === '4' ? '' : texto); // o "4" do menu não é preço
+  } else if (['alertas', 'clima', 'painel'].includes(r.intencao)) {
+    say(T.EM_BREVE, r.intencao); // lista de alertas, clima e painel: Fases Plus
   } else if (r.intencao === 'fluxo') {
     if (conversa.estado === 'coletando_safra') await coletar(texto);
+    else if (conversa.estado === 'criando_alerta') await criarAlerta(texto);
     else if (conversa.estado === 'perfil_tributario') await perfil(texto);
     else await confirmar(texto, r.eSe);
   } else if (r.intencao === 'safra') {

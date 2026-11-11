@@ -73,6 +73,12 @@ const T = {
   IDENTIDADE: 'Eu sou a IAra, uma assistente virtual do Agro na Medida. Não sou uma pessoa. Se quiser falar com alguém da equipe, escreva "3".',
   PREVISAO: 'Eu não faço previsão de preço nem de colheita. Posso fazer a conta com os números que você me passar (escreva "1") ou avisar quando o preço da saca chegar onde você quer.',
 
+  PEDE_GATILHO: 'Para criar o alerta, me diga a cultura e o preço da saca. Exemplo: "me avisa quando a soja passar de 110".',
+  GATILHO_CRIADO: 'Combinado! Quando a saca de {cultura} chegar a {preco_alvo} ou mais, eu te aviso aqui.',
+  GATILHO_REFERENCIA_CUSTO: 'Pela sua conta, seu custo é {custo_saca} por saca.',
+  ALERTA_RESPOSTA_SIM: 'Certo, registrei. Na demonstração, a equipe fala com você aqui; no produto real, o comercial da cooperativa recebe o pedido.',
+  ALERTA_RESPOSTA_NAO: 'Tudo bem. Se quiser outro alerta, é só pedir.',
+
   FORA_ESCOPO: 'Eu só ajudo com a conta da safra e com a reforma tributária para o produtor. Escreva "menu" para ver as opções.',
   EM_BREVE: 'Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.',
   AUDIO_LIGADO: 'Combinado, vou responder em áudio também. Os números continuam indo por escrito.',

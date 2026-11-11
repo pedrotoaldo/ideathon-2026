@@ -64,7 +64,7 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 **SEM_CONTA** ("e se" antes de existir uma conta pronta)
 > Antes, preciso da conta da safra. Escreva "1" para começar.
 
-**EM_BREVE** (temporário: intenções ainda não implementadas, como o alerta de preço; some quando a Etapa 4 entrar)
+**EM_BREVE** (temporário: intenções ainda não implementadas, hoje: "meus alertas" e cancelar alerta (Plus 2), clima e painel (Plus 4))
 > Essa parte ainda não está pronta nesta versão. Escreva "1" para fazer a conta da safra ou "menu" para ver as opções.
 
 **CONFIRMA_DADOS**
@@ -169,9 +169,8 @@ Regras de estilo: frases curtas, no máximo ~600 caracteres por mensagem, númer
 
 **GATILHO_CRIADO**
 > Combinado! Quando a saca de {cultura} chegar a {preco_alvo} ou mais, eu te aviso aqui. {referencia_custo}
-> Para ver ou cancelar, escreva "meus alertas".
 
-`referencia_custo` (só se houver conta da safra): "Pela sua conta, seu custo é {custo_saca} por saca."
+`referencia_custo` (só se houver conta da safra da mesma cultura): "Pela sua conta, seu custo é {custo_saca} por saca." No Núcleo há um alerta por conversa (um novo substitui o anterior); "meus alertas" e cancelar ficam na Plus 2 e, até lá, respondem `EM_BREVE`, por isso a frase "Para ver ou cancelar, escreva "meus alertas"" só entra com a Plus 2.
 
 Os textos abaixo marcados com (Plus) só entram nas Fases Plus.
 
@@ -239,7 +238,9 @@ Sem nenhuma das duas, só essas duas linhas (sem "Validar com o contador"). Se a
 | apagar | "apagar meus dados", "apaga meus dados" |
 | fora_escopo | o LLM classifica como fora quando nenhuma regra bate e não há fluxo ativo |
 
-Dentro de um fluxo ativo (`coletando_safra`, `coletando_perfil`, `cancelando_gatilho`, `aguardando_resposta_alerta`), toda mensagem é tratada como resposta do fluxo, exceto "menu", "3" e "apagar meus dados".
+Dentro de um fluxo ativo (`coletando_safra`, `confirmando_safra`, `perfil_tributario`, `criando_alerta`), toda mensagem é tratada como resposta do fluxo, exceto "menu", "3" e "apagar meus dados".
+
+`aguardando_resposta_alerta` (depois de `ALERTA_PRECO`): "sim" gera `ALERTA_RESPOSTA_SIM` (e um `encaminhamento` com origem "alerta"), "não" gera `ALERTA_RESPOSTA_NAO`; qualquer outra mensagem sai do estado e segue como no menu.
 
 ## 2.1 Áudio (Etapa 5 do PLAN; OpenAI)
 - Com `AUDIO_ATIVO=false` (ou sem `AUDIO_API_KEY`), qualquer áudio recebido responde `AUDIO_AINDA_NAO`, os comandos de áudio também, e `BOAS_VINDAS`/`MENU` não oferecem áudio.

@@ -165,7 +165,7 @@ Conferir os corpos exatos na documentação da versão instalada antes de codar.
 
 ## 8a. Alerta simulado do Núcleo: `scripts/disparar-alerta.mjs`
 
-Uso: `node --env-file=.env scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`). Roda à parte do bot, usando o mesmo `.env`, o Postgres e a Evolution.
+Uso: `node scripts/disparar-alerta.mjs <cultura> <preço>` (ex.: `soja 98`); `--so <prefixo>` limita a números com aquele prefixo (a regressão usa `5500…`, para nunca acionar alertas reais). Roda à parte do bot, lendo o mesmo `.env`, o Postgres e a Evolution. Se o envio falhar, o alerta volta a ficar ativo.
 
 | # | Passo | Função |
 | --- | --- | --- |

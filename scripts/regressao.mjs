@@ -2,6 +2,7 @@
 // Uso: npm run regressao          (o bot precisa estar rodando: npm run bot)
 // Cada cenário usa um número fictício próprio (5500...) e é apagado no fim.
 
+import { execFileSync } from 'node:child_process';
 import { conversar, enviar, esperarRespostas, limpar, fechar, pool } from './simulador.mjs';
 
 const cenarios = [
@@ -103,6 +104,38 @@ const cenarios = [
       ['não', [/Para levar ao contador/]],
       ['resumo', [/Perfil informado: pessoa física, receita aprox. R\$ 900\.000, integrado: não, outra empresa: não/, /Perfil provável: não contribuinte/, /Validar com o contador\.$/]],
     ],
+  },
+  {
+    nome: 'Roteiro E-simulado (Etapa 4): alerta de preço criado, disparado uma única vez e respondido',
+    numero: '5500900000014',
+    rodar: async (numero) => {
+      const r = [];
+      const passo = async (texto, deve, naoDeve = []) => {
+        const resp = await conversar(numero, texto, { limiteMs: JANELA + 8000 });
+        const todo = resp.map((x) => x.texto).join(' | ');
+        r.push({ ok: resp.length > 0 && deve.every((re) => re.test(todo)) && naoDeve.every((re) => !re.test(todo)), rotulo: `"${texto}"`, detalhe: todo || '(sem resposta)' });
+      };
+      const disparar = (preco) => execFileSync(process.execPath, ['--env-file=.env', 'scripts/disparar-alerta.mjs', 'soja', String(preco), '--so', numero], { encoding: 'utf8' });
+      const ultima = async () => (await pool.query("SELECT texto FROM resposta WHERE numero = $1 AND intencao = 'alerta_preco' ORDER BY id DESC LIMIT 1", [numero])).rows[0];
+      await passo('oi', [/Oi!/]);
+      await passo('1', [/Vamos fazer a conta/]);
+      await passo('10 hectares de soja, gastei 45 mil, espero 60 sacas por hectare, saca a 100', [/Entendi/]);
+      await passo('sim', [/custo por saca é R\$ 75\./]);
+      await passo('me avisa quando a soja passar de 95', [/Quando a saca de soja chegar a R\$ 95 ou mais, eu te aviso aqui\. Pela sua conta, seu custo é R\$ 75 por saca\./]);
+      let saida = disparar(92);
+      r.push({ ok: /Atingidos: 0/.test(saida) && !(await ultima()), rotulo: 'cotação soja 92: nenhum alerta', detalhe: saida });
+      saida = disparar(98);
+      const a = await ultima();
+      r.push({ ok: /Atingidos: 1/.test(saida) && !!a && /A saca de soja na cooperativa chegou a R\$ 98 hoje\. Você pediu aviso a partir de R\$ 95\./.test(a.texto) && /deixa cerca de R\$ 23\./.test(a.texto) && /A decisão de vender é sua\./.test(a.texto), rotulo: 'cotação soja 98: ALERTA_PRECO com "deixa cerca de R$ 23" e "A decisão de vender é sua"', detalhe: a ? a.texto : saida });
+      saida = disparar(99);
+      const n = (await pool.query("SELECT count(*) FROM resposta WHERE numero = $1 AND intencao = 'alerta_preco'", [numero])).rows[0].count;
+      r.push({ ok: /Atingidos: 0/.test(saida) && Number(n) === 1, rotulo: 'cotação soja 99: aviso único (nenhum alerta novo)', detalhe: `${n} alerta(s) enviados; ${saida}` });
+      await passo('sim', [/Certo, registrei/]);
+      const e = (await pool.query("SELECT count(*) FROM encaminhamento WHERE numero = $1 AND contexto->>'origem' = 'alerta'", [numero])).rows[0].count;
+      r.push({ ok: Number(e) === 1, rotulo: '"sim" registra o encaminhamento (origem alerta)', detalhe: `${e} registro(s)` });
+      await pool.query('DELETE FROM encaminhamento WHERE numero = $1', [numero]);
+      return r;
+    },
   },
   {
     nome: 'Apagar meus dados',

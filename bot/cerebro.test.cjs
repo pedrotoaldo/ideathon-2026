@@ -110,13 +110,61 @@ test('"e se" sem conta pronta pede a conta; fora do escopo vai por LLM', async (
   assert.equal(p.r.respostas[0].intencao, 'fora_escopo');
 });
 
-test('menu sai do fluxo; alerta de preço (Etapa 4) ainda responde EM_BREVE sem LLM', async () => {
+test('menu sai do fluxo; "meus alertas" (Plus 2) responde EM_BREVE sem LLM', async () => {
   const extrair = llm();
   let p = await passo({ estado: 'coletando_safra', dados: { safra: {} } }, 'menu', extrair);
   assert.equal(p.r.estado, 'menu');
-  p = await passo({ estado: 'menu', dados: {} }, '4', extrair);
+  p = await passo({ estado: 'menu', dados: {} }, 'meus alertas', extrair);
   assert.match(p.texto, /ainda não está pronta/);
   assert.equal(extrair.chamadas.length, 0);
+});
+
+test('alerta: "me avisa quando a soja passar de 95" cria o alerta sem LLM e cita o custo da conta', async () => {
+  const extrair = llm();
+  const dados = { ultimo_calculo: { cultura: 'soja', preco_equilibrio: 75 } };
+  const p = await passo({ estado: 'resultado_safra', dados }, 'me avisa quando a soja passar de 95', extrair);
+  assert.match(p.texto, /Quando a saca de soja chegar a R\$ 95 ou mais, eu te aviso aqui\. Pela sua conta, seu custo é R\$ 75 por saca\./);
+  assert.equal(p.r.estado, 'menu');
+  assert.deepEqual({ ...p.r.dados.alerta, criado_em: undefined }, { cultura: 'soja', cultura_nome: 'soja', preco_alvo: 95, ativo: true, criado_em: undefined });
+  assert.equal(extrair.chamadas.length, 0);
+});
+
+test('alerta: sem conta da mesma cultura não cita custo; "4" pede cultura e preço e o próximo texto completa', async () => {
+  const extrair = llm();
+  let p = await passo({ estado: 'menu', dados: { ultimo_calculo: { cultura: 'milho', preco_equilibrio: 40 } } }, '4', extrair);
+  assert.match(p.texto, /me diga a cultura e o preço da saca/);
+  assert.equal(p.r.estado, 'criando_alerta');
+  p = await passo(p.conv, 'soja 95', extrair);
+  assert.match(p.texto, /chegar a R\$ 95 ou mais/);
+  assert.doesNotMatch(p.texto, /seu custo/);
+  assert.equal(p.r.dados.alerta.ativo, true);
+  assert.equal(extrair.chamadas.length, 0);
+});
+
+test('alerta: preço fora da faixa é recusado; sem cultura conhecida usa o LLM', async () => {
+  let p = await passo({ estado: 'menu', dados: {} }, 'me avisa quando a soja passar de 5', llm());
+  assert.match(p.texto, /fora do comum/);
+  assert.equal(p.r.dados.alerta, undefined);
+  const extrair = llm({ cultura: 'milheto', gatilho_preco: 80 });
+  p = await passo({ estado: 'menu', dados: {} }, 'me avisa quando a saca de milheto passar de 80', extrair);
+  assert.equal(p.r.dados.alerta.cultura, 'milheto');
+  assert.equal(extrair.chamadas.length, 1);
+});
+
+test('alerta: depois do aviso, "sim" encaminha e "não" encerra; outra frase segue como no menu', async () => {
+  const base = { estado: 'aguardando_resposta_alerta', dados: { alerta: { cultura: 'soja', preco_alvo: 95, ativo: false, disparado: { preco: 98 } } } };
+  let p = await passo(base, 'sim', llm());
+  assert.match(p.texto, /Certo, registrei/);
+  assert.equal(p.r.acao, 'encaminhar');
+  assert.equal(p.r.contexto.origem, 'alerta');
+  assert.equal(p.r.contexto.preco_cotacao, 98);
+  assert.equal(p.r.estado, 'menu');
+  p = await passo(base, 'não', llm());
+  assert.match(p.texto, /Tudo bem\. Se quiser outro alerta/);
+  assert.equal(p.r.acao, undefined);
+  p = await passo(base, 'menu', llm());
+  assert.match(p.texto, /Como posso ajudar/);
+  assert.equal(p.r.estado, 'menu');
 });
 
 test('roteador: palavras-chave e fluxo ativo', () => {

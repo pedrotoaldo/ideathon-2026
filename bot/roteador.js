@@ -1,6 +1,6 @@
 // Roteador por regra (docs/CONVERSA.md seção 2). O LLM só entra quando nenhuma regra resolve ("ambiguo").
 
-const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario'];
+const ESTADOS_DE_FLUXO = ['coletando_safra', 'confirmando_safra', 'perfil_tributario', 'criando_alerta'];
 
 function normalizarTexto(texto) {
   return String(texto || '')
@@ -20,7 +20,8 @@ function tem(t, lista) {
 const MENU = ['menu', 'voltar', 'inicio', 'oi', 'ola', 'bom dia', 'boa tarde', 'boa noite'];
 const HUMANO = ['atendente', 'pessoa', 'falar com alguem', 'falar com uma pessoa', 'falar com pessoa', 'atendimento humano', 'falar com humano'];
 const APAGAR = ['apagar meus dados', 'apaga meus dados'];
-const GATILHO = ['me avisa quando', 'alerta de preco', 'avisa se passar', 'meus alertas', 'cancelar alerta'];
+const GATILHO = ['me avisa quando', 'me avisa se', 'alerta de preco', 'avisa se passar', 'criar alerta'];
+const LISTA_ALERTAS = ['meus alertas', 'cancelar alerta', 'cancelar meu alerta']; // Plus 2
 const TRIBUTARIO = ['reforma', 'imposto', 'impostos', 'tributo', 'tributos', 'ibs', 'cbs', 'contador', 'nota fiscal', 'contribuinte', 'regime', 'aliquota', 'simples nacional', 'credito presumido', 'lc 214'];
 const AGRO_TECNICO = ['amarelada', 'amarelado', 'amarelando', 'praga', 'pragas', 'doenca', 'doencas', 'lagarta', 'ferrugem', 'fungo', 'mancha', 'manchas', 'adubar', 'adubacao', 'defensivo', 'veneno'];
 // Tentativas de mudar as regras da IAra ou de ler o prompt: nem chegam ao LLM
@@ -97,7 +98,7 @@ function numeroSolto(texto) {
 }
 
 // Retorna { intencao, eSe }
-// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | clima | painel | audio | resumo | safra | fluxo | ambiguo
+// intencao: menu | apagar | humano | injecao | perfil | tributario | agronomo | gatilho | alertas | clima | painel | audio | resumo | safra | fluxo | ambiguo
 function rotear(texto, estado) {
   const t = normalizarTexto(texto);
   if (MENU.includes(t)) return { intencao: 'menu' };
@@ -113,6 +114,7 @@ function rotear(texto, estado) {
   const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (linhas.length > 1 && normalizarTexto(linhas[0]) === '1') return { intencao: 'safra', eSe: false, soPedido: false, resto: linhas.slice(1).join('\n') };
   if (linhas.length > 1 && normalizarTexto(linhas[0]) === '2') return { intencao: 'perfil', resto: linhas.slice(1).join('\n') };
+  if (tem(t, LISTA_ALERTAS)) return { intencao: 'alertas' };
   if (t === '4' || tem(t, GATILHO)) return { intencao: 'gatilho' };
   if (t === '2') return { intencao: 'perfil' };
   if (tem(t, TRIBUTARIO)) return { intencao: 'tributario' };
