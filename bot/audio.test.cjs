@@ -32,14 +32,14 @@ test('transcrever: multipart em português para /audio/transcriptions', async ()
   assert.equal(visto.op.body.get('file').name, 'audio.ogg');
 });
 
-test('sintetizar: sempre envia instructions (jovem de cerca de 20 anos, timbre leve, sem tom maduro, de locutora ou de robô)', async () => {
+test('sintetizar: sempre envia instructions (jovem, leve, sem tom maduro, de locutora ou de call center)', async () => {
   let corpo;
   const fetchFn = async (url, op) => { corpo = JSON.parse(op.body); return { ok: true, arrayBuffer: async () => Buffer.from('mp3') }; };
   await sintetizar('Olha, fiz a sua conta.', { fetchFn });
-  assert.match(corpo.instructions, /^Voz feminina jovem, por volta de 20 anos, sotaque neutro do português do Brasil\./);
-  assert.match(corpo.instructions, /Timbre leve e claro/);
-  assert.match(corpo.instructions, /sorriso na voz/);
-  assert.match(corpo.instructions, /Nada de tom maduro, de locutora ou de robô\.$/);
+  assert.match(corpo.instructions, /^Voice: A young Brazilian woman in her mid-twenties, recently graduated, speaking Brazilian Portuguese/);
+  assert.match(corpo.instructions, /never mature, never deep, never like a news anchor or a call center/);
+  assert.match(corpo.instructions, /Smiling while she speaks/);
+  assert.match(corpo.instructions, /Pronunciation: Clear and relaxed, everyday Brazilian Portuguese, not formal\.$/);
   assert.equal(corpo.model, 'gpt-4o-mini-tts');
 });
 
